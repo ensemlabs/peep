@@ -27,10 +27,15 @@ class Settings(BaseSettings):
     admin_email: str = ""
     admin_password: str = ""
 
-    llm_base_url: str = "http://llm-proxy-ts:8000/v1"
+    # Model registry file (see config/models.example.yaml). Missing file => registry built from LLM_* below.
+    models_config: str = "/app/config/models.yaml"
+    dev_model_switcher: bool = False  # only used by the LLM_* fallback registry
+    secrets_key: str = ""  # Fernet key for plugin header encryption
+
+    llm_base_url: str = ""
     llm_api_key: str = ""
-    llm_default_model: str = "gemini-pro"
-    llm_models: str = ""  # comma-separated allowlist (order kept); empty = everything upstream offers
+    llm_default_model: str = ""
+    llm_models: str = ""  # fallback registry only: extra model ids besides LLM_DEFAULT_MODEL (comma-separated)
     llm_timeout_seconds: float = 300
     replay_enabled: bool = True
     replay_time_scale: float = 1.0  # multiplies fixture delays; tests use 0

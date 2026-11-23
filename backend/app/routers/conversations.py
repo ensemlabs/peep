@@ -1,14 +1,11 @@
 import re
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Literal
-
 from fastapi import APIRouter, Depends, Query, Response
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select, update
+from sqlalchemy import and_, exists, func, literal, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import get_settings
 from app.db import get_db
 from app.deps import active_user
 from app.errors import ApiError
@@ -17,7 +14,8 @@ from app.providers.base import RunContext
 from app.providers.openai_provider import OpenAIProvider
 from app.providers.replay_provider import ReplayProvider
 from app.schemas import iso
-from app.services import llm_models, media
+from app.services import media
+from app.services import model_registry as mr
 from app.services.runs import sse_response, RunState, ev, message_json, registry, stream_events
 
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
@@ -36,14 +34,15 @@ class CreateConversation(_Body):
 
 
 class PatchConversation(_Body):
-    title: str = Field(max_length=200)
+    title: str | None = Field(None, max_length=200)
+    pinned: bool | None = None
 
 
 class SendMessage(_Body):
     content: str = Field("", max_length=MAX_CONTENT_CHARS)
     attachment_ids: list[uuid.UUID] = Field(default_factory=list, max_length=32)
     model: str | None = None
-    reasoning: Literal["off", "high"] = "off"
+    reasoning: str | None = Field(None, max_length=32)  # thinking level id; None = model default
 
 
 def conversation_json(c: Conversation) -> dict:
@@ -53,6 +52,7 @@ def conversation_json(c: Conversation) -> dict:
         "model": c.model,
         "created_at": iso(c.created_at),
         "updated_at": iso(c.updated_at),
+        "pinned": c.pinned,
     }
 
 
@@ -77,39 +77,176 @@ async def attachments_by_message(db: AsyncSession, messages: list[Message]) -> d
     return result
 
 
-async def validate_model(model: str) -> str:
-    available = {m["id"] for m in (await llm_models.list_models())["items"]}
-    if model not in available:
-        raise ApiError(422, "invalid_model", f"Unknown model {model!r}")
-    return model
+def choose_model(requested: str | None, conv: Conversation | None = None) -> mr.ResolvedModel:
+    """The model for a request. Outside dev.model_switcher the configured active model always wins."""
+    reg = mr.get_registry()
+    sel = mr.selectable(reg)
+    if reg.switchable:
+        wanted = requested or (conv.model if conv and conv.model in sel else None) or reg.active_id
+        if wanted not in sel:
+            raise ApiError(422, "invalid_model", f"Unknown model {wanted!r}")
+        return sel[wanted]
+    return sel[reg.active_id]
+
+
+def choose_level(model: mr.ResolvedModel, requested: str | None) -> str | None:
+    t = model.cfg.thinking
+    if t is None:
+        return None  # model has no thinking levels: the field is ignored
+    if requested is None:
+        return t.default
+    if requested not in {lv.id for lv in t.levels}:
+        raise ApiError(422, "invalid_reasoning_level", f"Model {model.id!r} has no thinking level {requested!r}")
+    return requested
+
+
+_MD_STRIP = [
+    (re.compile(r"```[^\n]*\n?"), " "),
+    (re.compile(r"!\[[^\]]*\]\([^)]*\)"), " "),
+    (re.compile(r"\[([^\]]*)\]\([^)]*\)"), r"\1"),
+    (re.compile(r"(?m)^\s{0,3}(#{1,6}|>+|[-*+]|\d+\.)\s+"), ""),
+    (re.compile(r"[`*_~|]+"), ""),
+    (re.compile(r"\s+"), " "),
+]
+
+
+PREVIEW_INPUT_CAP = 400  # work on a bounded prefix: keeps every regex cheap whatever the message holds
+
+
+def _is_separator_line(line: str) -> bool:
+    """Markdown table separator or horizontal rule (|---|:--:|, ---): only | : - and spaces, with a dash run."""
+    s = line.strip()
+    return "---" in s and not s.strip("|:- ")
+
+
+def make_preview(text: str | None) -> str:
+    text = "\n".join(l for l in (text or "")[:PREVIEW_INPUT_CAP].split("\n") if not _is_separator_line(l))
+    for rx, rep in _MD_STRIP:
+        text = rx.sub(rep, text)
+    return text.strip()[:100]
+
+
+def _like(q: str) -> str:
+    return "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+
+
+def _cursor(c: Conversation) -> str:
+    return f"{int(c.pinned)}~{c.updated_at.astimezone(UTC).isoformat()}~{c.id}"
+
+
+def _parse_cursor(before: str) -> tuple[bool, datetime, uuid.UUID | None]:
+    """`next_before` token "<0|1>~<iso>~<uuid>". Older forms still work: "<0|1>~<iso>" (no tie-breaker) and a
+    bare ISO timestamp (= unpinned, older than)."""
+    bad = ApiError(422, "invalid_request", "before must be a timestamp or a next_before token")
+    parts = before.split("~")
+    pinned, last_id = False, None
+    if parts[0] in ("0", "1") and len(parts) in (2, 3):
+        pinned, ts = parts[0] == "1", parts[1]
+        if len(parts) == 3:
+            try:
+                last_id = uuid.UUID(parts[2])
+            except ValueError:
+                raise bad from None
+    elif len(parts) == 1:
+        ts = before
+    else:
+        raise bad
+    try:
+        when = datetime.fromisoformat(ts.replace("Z", "+00:00").replace(" ", "+"))
+    except ValueError:
+        raise bad from None
+    return pinned, when if when.tzinfo else when.replace(tzinfo=UTC), last_id
+
+
+FINISHED = ("complete", "error", "stopped")
 
 
 @router.get("")
 async def list_conversations(
     limit: int = Query(50, ge=1, le=100),
-    before: datetime | None = None,
+    before: str | None = Query(None, max_length=100),
+    q: str | None = Query(None, max_length=200),
     user: User = Depends(active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    q = select(Conversation).where(Conversation.user_id == user.id)
-    if before is not None:
-        if before.tzinfo is None:
-            before = before.replace(tzinfo=UTC)
-        q = q.where(Conversation.updated_at < before)
-    rows = (await db.execute(q.order_by(Conversation.updated_at.desc(), Conversation.id).limit(limit))).scalars()
-    return {
-        "items": [
-            {"id": str(c.id), "title": c.title, "model": c.model, "updated_at": iso(c.updated_at)} for c in rows
-        ]
-    }
+    """Pinned first, then updated_at desc. `next_before` (null on the last page) is the cursor for `before`."""
+    last_asst = (
+        select(Message.status, func.left(func.ltrim(Message.content), PREVIEW_INPUT_CAP).label("content"), Message.updated_at)
+        .where(Message.conversation_id == Conversation.id, Message.role == "assistant")
+        .order_by(Message.created_at.desc())
+        .limit(1)
+        .lateral("last_asst")
+    )
+    last_any = (
+        select(func.left(func.ltrim(Message.content), PREVIEW_INPUT_CAP).label("content"))
+        .where(Message.conversation_id == Conversation.id, Message.content != "")
+        .order_by(Message.created_at.desc())
+        .limit(1)
+        .lateral("last_any")
+    )
+    stmt = (
+        select(
+            Conversation,
+            last_asst.c.status.label("last_status"),
+            last_asst.c.content.label("asst_content"),
+            last_asst.c.updated_at.label("asst_finished"),
+            last_any.c.content.label("any_content"),
+        )
+        .select_from(Conversation)
+        .outerjoin(last_asst, true())
+        .outerjoin(last_any, true())
+        .where(Conversation.user_id == user.id)
+    )
+    if q and q.strip():
+        like = _like(q.strip())
+        stmt = stmt.where(
+            or_(
+                Conversation.title.ilike(like, escape="\\"),
+                exists().where(Message.conversation_id == Conversation.id, Message.content.ilike(like, escape="\\")),
+            )
+        )
+    if before:
+        c_pinned, c_ts, c_id = _parse_cursor(before)
+        # rows after the cursor in ORDER BY pinned DESC, updated_at DESC, id ASC
+        later = Conversation.updated_at < c_ts
+        if c_id is not None:
+            later = or_(later, and_(Conversation.updated_at == c_ts, Conversation.id > c_id))
+        same_group = and_(Conversation.pinned == literal(c_pinned), later)
+        stmt = stmt.where(or_(Conversation.pinned == literal(False), same_group) if c_pinned else same_group)
+    rows = (
+        await db.execute(stmt.order_by(Conversation.pinned.desc(), Conversation.updated_at.desc(), Conversation.id).limit(limit + 1))
+    ).all()
+    more = len(rows) > limit
+    rows = rows[:limit]
+    items = []
+    for r in rows:
+        c: Conversation = r.Conversation
+        status = r.last_status or "idle"
+        unread = bool(
+            r.last_status in FINISHED and (c.last_read_at is None or r.asst_finished > c.last_read_at)
+        )
+        items.append(
+            {
+                "id": str(c.id),
+                "title": c.title,
+                "model": c.model,
+                "updated_at": iso(c.updated_at),
+                "status": status,
+                "unread": unread,
+                "preview": make_preview(r.asst_content or r.any_content),
+                "pinned": c.pinned,
+            }
+        )
+    next_before = _cursor(rows[-1].Conversation) if more and rows else None
+    return {"items": items, "next_before": next_before}
 
 
 @router.post("", status_code=201)
 async def create_conversation(
     body: CreateConversation, user: User = Depends(active_user), db: AsyncSession = Depends(get_db)
 ):
-    model = await validate_model(body.model) if body.model else (await llm_models.list_models())["default"]
-    conv = Conversation(user_id=user.id, title=(body.title or "").strip(), model=model)
+    model = choose_model(body.model)
+    conv = Conversation(user_id=user.id, title=(body.title or "").strip(), model=model.id)
     db.add(conv)
     await db.commit()
     return {"conversation": conversation_json(conv)}
@@ -137,19 +274,34 @@ async def get_conversation(
 
 
 @router.patch("/{conversation_id}")
-async def rename_conversation(
+async def update_conversation(
     conversation_id: uuid.UUID,
     body: PatchConversation,
     user: User = Depends(active_user),
     db: AsyncSession = Depends(get_db),
 ):
     conv = await owned_conversation(db, user, conversation_id)
-    title = body.title.strip()
-    if not title:
-        raise ApiError(422, "invalid_request", "title must not be empty")
-    conv.title = title
+    if body.title is None and body.pinned is None:
+        raise ApiError(422, "invalid_request", "Nothing to update: send title and/or pinned")
+    if body.title is not None:
+        title = body.title.strip()
+        if not title:
+            raise ApiError(422, "invalid_request", "title must not be empty")
+        conv.title = title
+    if body.pinned is not None:
+        conv.pinned = body.pinned
     await db.commit()
     return {"conversation": conversation_json(conv)}
+
+
+@router.post("/{conversation_id}/read", status_code=204)
+async def mark_read(
+    conversation_id: uuid.UUID, user: User = Depends(active_user), db: AsyncSession = Depends(get_db)
+) -> Response:
+    conv = await owned_conversation(db, user, conversation_id)
+    conv.last_read_at = datetime.now(UTC)
+    await db.commit()
+    return Response(status_code=204)
 
 
 @router.delete("/{conversation_id}", status_code=204)
@@ -182,9 +334,8 @@ async def send_message(
     conv = await owned_conversation(db, user, conversation_id)
     if not body.content.strip() and not body.attachment_ids:
         raise ApiError(422, "empty_message", "Message needs text or an attachment")
-    model = await validate_model(body.model or conv.model or get_settings().llm_default_model)
-    if body.reasoning == "high" and model.startswith("replay:"):
-        body.reasoning = "off"
+    model = choose_model(body.model, conv)
+    level = choose_level(model, body.reasoning)
 
     if not registry.reserve(conv.id):
         raise ApiError(409, "run_in_progress", "A reply is already being generated in this conversation")
@@ -212,7 +363,7 @@ async def send_message(
             conversation_id=conv.id,
             role="assistant",
             status="streaming",
-            model=model,
+            model=model.id,
             created_at=now + timedelta(milliseconds=1),
             updated_at=now + timedelta(milliseconds=1),
         )
@@ -223,7 +374,7 @@ async def send_message(
             f.message_id = user_msg.id
         if not conv.title:
             conv.title = _make_title(body.content, files)
-        conv.model = model
+        conv.model = model.id
         conv.updated_at = now
         await db.commit()
     except BaseException:
@@ -231,14 +382,14 @@ async def send_message(
         raise
 
     state = RunState(asst, conv.id, user.id)
-    provider = ReplayProvider() if model.startswith("replay:") else OpenAIProvider()
+    provider = ReplayProvider() if model.id.startswith("replay:") else OpenAIProvider()
     ctx = RunContext(
         state,
         user_id=user.id,
         conversation_id=conv.id,
         user_message_id=user_msg.id,
-        model=model,
-        reasoning=body.reasoning == "high",
+        model=model.id,
+        level=level,
     )
     q = state.subscribe()
     registry.start(state, provider, ctx)

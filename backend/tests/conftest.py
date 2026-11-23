@@ -9,6 +9,7 @@ import httpx2 as httpx
 import pytest
 import pytest_asyncio
 import uvicorn
+from cryptography.fernet import Fernet
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
 
@@ -17,7 +18,7 @@ from app.db import get_engine, get_sessionmaker
 from app.main import app
 from app.models import User
 from app.security import hash_password
-from app.services import llm_models, storage
+from app.services import model_registry, storage
 from app.services.runs import registry
 from app.services.startup import run_migrations
 from app.services.storage import ensure_bucket
@@ -53,9 +54,9 @@ async def _setup():
 @pytest_asyncio.fixture(autouse=True)
 async def _clean(monkeypatch):
     await registry.wait_idle()
-    llm_models.clear_cache()
+    model_registry.reset()
     async with get_engine().begin() as conn:
-        await conn.execute(text("TRUNCATE users, auth_throttle, conversations, messages, files, sessions CASCADE"))
+        await conn.execute(text("TRUNCATE users, auth_throttle, conversations, messages, files, sessions, skills, plugins CASCADE"))
     # Settings are a shared singleton: patch through monkeypatch so each test starts from defaults.
     s = get_settings()
     for name in (
@@ -76,11 +77,18 @@ async def _clean(monkeypatch):
         "replay_enabled",
         "replay_time_scale",
         "max_upload_mb",
+        "models_config",
+        "dev_model_switcher",
+        "secrets_key",
     ):
         monkeypatch.setattr(s, name, getattr(s, name))
     monkeypatch.setattr(s, "replay_time_scale", 0.0)
     monkeypatch.setattr(s, "llm_base_url", "http://127.0.0.1:1/v1")  # nothing listens: upstream "down"
     monkeypatch.setattr(s, "llm_models", "gemini-pro,gemini-flash-lite")
+    monkeypatch.setattr(s, "llm_default_model", "gemini-pro")
+    monkeypatch.setattr(s, "dev_model_switcher", True)  # tests may pick any model / replay
+    monkeypatch.setattr(s, "models_config", "/nonexistent/models.yaml")  # => env fallback registry
+    monkeypatch.setattr(s, "secrets_key", Fernet.generate_key().decode())
     yield
     await registry.wait_idle()
 
@@ -207,3 +215,18 @@ async def live_api(make_client):
     """The real app on a real socket (needed for true streaming / disconnect tests)."""
     async with serve(app) as url:
         yield url
+
+
+@pytest.fixture
+def use_registry(tmp_path, settings, monkeypatch):
+    """Install a models.yaml registry for the test: use_registry(yaml_text)."""
+
+    def install(text: str):
+        path = tmp_path / "models.yaml"
+        path.write_text(text)
+        monkeypatch.setattr(settings, "models_config", str(path))
+        model_registry.reset()
+        return model_registry.get_registry()
+
+    yield install
+    model_registry.reset()

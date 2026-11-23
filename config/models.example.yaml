@@ -1,0 +1,200 @@
+# Model registry. Copy to config/models.yaml (git-ignored) and edit:   cp config/models.example.yaml config/models.yaml
+#
+# - `${ENV}` / `${ENV:-default}` are interpolated from the api container environment (.env).
+# - Never put API keys in this file: `api_key_env` names the environment variable that holds the key.
+# - Without config/models.yaml the api builds a registry from LLM_BASE_URL / LLM_API_KEY /
+#   LLM_DEFAULT_MODEL / LLM_MODELS (OpenAI-compatible, thinking levels off/high).
+# - Provider-specific request options live in each thinking level's `patch`:
+#     * keys the OpenAI SDK knows (reasoning_effort, temperature, ...) are sent as normal parameters,
+#     * `extra_body: {...}` (and any unknown key) is merged into the JSON request body.
+# - Lines marked "verify against provider docs" come from research on 2026-11-23: provider APIs change,
+#   check the current documentation before relying on them.
+
+active: my-model            # the one model users get (placeholder: replace with an id defined below)
+
+dev:
+  model_switcher: false     # true: show a model picker and allow every model (+ replay:*). For dev/e2e only.
+
+providers:
+  # ------------------------------------------------------------------------------------------------
+  # Generic OpenAI-compatible endpoint (placeholder - point it at your provider)
+  # ------------------------------------------------------------------------------------------------
+  - id: my-provider
+    base_url: ${LLM_BASE_URL:-https://api.example.com/v1}
+    api_key_env: LLM_API_KEY
+    usage: provider         # provider: trust the usage returned by the API; estimate: always use tiktoken
+    models:
+      - id: my-model
+        upstream: my-model-name      # name sent to the provider (defaults to id)
+        label: My Model              # or {en: ..., vi: ...}
+        vision: false
+        context_window: 128000
+        image_tokens: 765            # token estimate per attached image
+        token_ratio: 1.0             # multiplier on tiktoken estimates (calibrate per model)
+        # Omit `thinking` for models without reasoning controls.
+
+  # ------------------------------------------------------------------------------------------------
+  # OpenAI                                                          # verify against provider docs
+  # ------------------------------------------------------------------------------------------------
+  # - id: openai
+  #   base_url: https://api.openai.com/v1
+  #   api_key_env: OPENAI_API_KEY
+  #   models:
+  #     - id: gpt-reasoning
+  #       upstream: your-openai-model       # verify against provider docs
+  #       label: OpenAI Reasoning
+  #       vision: true
+  #       context_window: 400000
+  #       thinking:
+  #         default: medium
+  #         returns_text: false             # Chat Completions does not return thinking text
+  #         levels:                         # reasoning_effort: low|medium|high|xhigh|max; "none" only on some models (else HTTP 400)
+  #           - {id: low,    label: Low,    patch: {reasoning_effort: low}}
+  #           - {id: medium, label: Medium, patch: {reasoning_effort: medium}}
+  #           - {id: high,   label: High,   patch: {reasoning_effort: high}}
+  #       # usage: prompt_tokens_details.cached_tokens, completion_tokens_details.reasoning_tokens
+
+  # ------------------------------------------------------------------------------------------------
+  # Google Gemini official OpenAI-compatible endpoint                # verify against provider docs
+  # ------------------------------------------------------------------------------------------------
+  # - id: gemini
+  #   base_url: https://generativelanguage.googleapis.com/v1beta/openai/
+  #   api_key_env: GEMINI_API_KEY
+  #   models:
+  #     - id: gemini-official
+  #       upstream: your-gemini-model       # verify against provider docs
+  #       label: Gemini
+  #       vision: true
+  #       context_window: 1000000
+  #       image_tokens: 258
+  #       thinking:
+  #         default: high
+  #         returns_text: true
+  #         read_from:
+  #           delta_fields: [reasoning_content, reasoning]
+  #           parse_tags: true              # thoughts may arrive inline as <thought>...</thought> (unverified)
+  #           tag_names: [thought]
+  #         levels:                         # thinking cannot be switched off on 2.5 Pro / 3 / 4
+  #           - {id: low,    label: Low,    patch: {extra_body: {google: {thinking_config: {thinking_level: low,    include_thoughts: true}}}}}
+  #           - {id: medium, label: Medium, patch: {extra_body: {google: {thinking_config: {thinking_level: medium, include_thoughts: true}}}}}
+  #           - {id: high,   label: High,   patch: {extra_body: {google: {thinking_config: {thinking_level: high,   include_thoughts: true}}}}}
+
+  # ------------------------------------------------------------------------------------------------
+  # DeepSeek                                                        # verify against provider docs
+  # ------------------------------------------------------------------------------------------------
+  # - id: deepseek
+  #   base_url: https://api.deepseek.com
+  #   api_key_env: DEEPSEEK_API_KEY
+  #   models:
+  #     - id: deepseek-flash
+  #       upstream: deepseek-flash
+  #       label: DeepSeek Flash
+  #       context_window: 128000
+  #       thinking:
+  #         default: off
+  #         returns_text: true
+  #         read_from: {delta_fields: [reasoning_content]}
+  #         levels:
+  #           - {id: off,  label: {en: Off, vi: Tắt}, patch: {extra_body: {thinking: {type: disabled}}}}
+  #           - {id: low,  label: Low,  patch: {reasoning_effort: low,  extra_body: {thinking: {type: enabled}}}}
+  #           - {id: high, label: High, patch: {reasoning_effort: high, extra_body: {thinking: {type: enabled}}}}
+  #           - {id: max,  label: Max,  patch: {reasoning_effort: max,  extra_body: {thinking: {type: enabled}}}}
+  #       # usage: prompt_cache_hit_tokens / prompt_cache_miss_tokens
+  #     - id: deepseek-v4-pro
+  #       upstream: deepseek-v4-pro
+  #       label: DeepSeek V4 Pro
+  #       context_window: 128000
+  #       thinking:
+  #         default: high
+  #         returns_text: true
+  #         read_from: {delta_fields: [reasoning_content]}
+  #         levels:
+  #           - {id: off,  label: {en: Off, vi: Tắt}, patch: {extra_body: {thinking: {type: disabled}}}}
+  #           - {id: high, label: High, patch: {reasoning_effort: high, extra_body: {thinking: {type: enabled}}}}
+  #           - {id: max,  label: Max,  patch: {reasoning_effort: max,  extra_body: {thinking: {type: enabled}}}}
+
+  # ------------------------------------------------------------------------------------------------
+  # Anthropic OpenAI-compatible endpoint                            # verify against provider docs
+  # ------------------------------------------------------------------------------------------------
+  # - id: anthropic
+  #   base_url: https://api.anthropic.com/v1/
+  #   api_key_env: ANTHROPIC_API_KEY
+  #   models:
+  #     - id: claude-compat
+  #       upstream: your-claude-model       # verify against provider docs
+  #       label: Claude
+  #       vision: true
+  #       context_window: 200000
+  #       thinking:
+  #         default: off
+  #         returns_text: false             # thinking text is not returned by the compat layer
+  #         levels:                         # budget_tokens must be >= 1024
+  #           - {id: off,  label: {en: Off, vi: Tắt}, patch: {}}
+  #           - {id: low,  label: Low,  patch: {extra_body: {thinking: {type: enabled, budget_tokens: 2048}}}}
+  #           - {id: high, label: High, patch: {extra_body: {thinking: {type: enabled, budget_tokens: 16000}}}}
+
+  # ------------------------------------------------------------------------------------------------
+  # OpenRouter                                                      # verify against provider docs
+  # ------------------------------------------------------------------------------------------------
+  # - id: openrouter
+  #   base_url: https://openrouter.ai/api/v1
+  #   api_key_env: OPENROUTER_API_KEY
+  #   models:
+  #     - id: openrouter-model
+  #       upstream: vendor/model-name       # verify against provider docs
+  #       label: OpenRouter Model
+  #       context_window: 128000
+  #       thinking:
+  #         default: off
+  #         returns_text: true
+  #         read_from: {delta_fields: [reasoning]}   # also sent as reasoning_details
+  #         levels:
+  #           - {id: off,    label: {en: Off, vi: Tắt}, patch: {extra_body: {reasoning: {effort: none}}}}
+  #           - {id: low,    label: Low,    patch: {extra_body: {reasoning: {effort: low}}}}
+  #           - {id: medium, label: Medium, patch: {extra_body: {reasoning: {effort: medium}}}}
+  #           - {id: high,   label: High,   patch: {extra_body: {reasoning: {effort: high}}}}
+
+  # ------------------------------------------------------------------------------------------------
+  # vLLM / Ollama (e.g. Qwen3)                                      # verify against provider docs
+  # ------------------------------------------------------------------------------------------------
+  # - id: local
+  #   base_url: http://host.docker.internal:8000/v1
+  #   usage: provider
+  #   models:
+  #     - id: qwen3-local
+  #       upstream: Qwen/Qwen3-32B
+  #       label: Qwen3 (local)
+  #       context_window: 32768
+  #       thinking:
+  #         default: on
+  #         returns_text: true
+  #         read_from:
+  #           delta_fields: [reasoning, reasoning_content]   # older vLLM used reasoning_content
+  #           parse_tags: true                                # fallback when thinking is inline as <think>...</think>
+  #           tag_names: [think]
+  #         levels:
+  #           - {id: off, label: {en: Off, vi: Tắt}, patch: {extra_body: {chat_template_kwargs: {enable_thinking: false}}}}
+  #           - {id: on,  label: {en: On,  vi: Bật}, patch: {extra_body: {chat_template_kwargs: {enable_thinking: true}}}}
+
+  # ------------------------------------------------------------------------------------------------
+  # dev/test: llm-proxy (free local proxy)
+  # Only for development and tests: no API cost, can also generate images and video.
+  # Join its docker network with docker-compose.gemini.yml (make up GEMINI=1).
+  # ------------------------------------------------------------------------------------------------
+  # - id: llm-proxy
+  #   base_url: http://llm-proxy-ts:8000/v1
+  #   api_key_env: LLM_API_KEY
+  #   usage: estimate                       # it reports word counts, not tokens
+  #   models:
+  #     - id: gemini-pro
+  #       label: Gemini Pro
+  #       vision: true
+  #       context_window: 1000000
+  #       image_tokens: 258
+  #       thinking:
+  #         default: off
+  #         returns_text: true
+  #         read_from: {delta_fields: [reasoning_content, reasoning]}
+  #         levels:                         # only reasoning_effort: high turns thinking on
+  #           - {id: off,  label: {en: Off,  vi: Tắt}, patch: {}}
+  #           - {id: high, label: {en: High, vi: Cao}, patch: {reasoning_effort: high}}

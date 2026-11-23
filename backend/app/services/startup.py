@@ -60,3 +60,43 @@ async def mark_interrupted_messages() -> None:
         await db.commit()
         if result.rowcount:
             log.warning("marked %d streaming messages as interrupted", result.rowcount)
+
+
+async def check_secrets() -> None:
+    """Startup check of plugin secret storage.
+
+    Fails only when the stored data cannot be read: encrypted header values exist and SECRETS_KEY is missing,
+    invalid, or does not decrypt them. Header-less plugins need no key, so they never block startup.
+    """
+    from sqlalchemy import func, text
+
+    from app.models import Plugin
+    from app.services import secrets
+
+    key_set = bool(get_settings().secrets_key.strip())
+    async with get_sessionmaker()() as db:
+        encrypted = (
+            await db.execute(select(func.count()).select_from(Plugin).where(text("jsonb_array_length(headers) > 0")))
+        ).scalar_one()
+        sample = None
+        if encrypted:
+            row = (await db.execute(select(Plugin.headers).where(text("jsonb_array_length(headers) > 0")).limit(1))).first()
+            sample = row[0][0]["value_enc"] if row else None
+
+    key_problem = None
+    try:
+        secrets.validate_key_configured()
+    except secrets.SecretsNotConfigured as e:
+        key_problem = str(e)
+
+    if encrypted:
+        if key_problem:
+            raise RuntimeError(f"{encrypted} plugin(s) hold encrypted header values but {key_problem}")
+        if sample is not None and not secrets.check_token(sample):
+            raise RuntimeError(
+                "SECRETS_KEY cannot decrypt the stored plugin header values (wrong key?). "
+                "Restore the key that was used when the plugins were saved."
+            )
+    elif key_problem:
+        reason = "SECRETS_KEY is not set" if not key_set else "SECRETS_KEY is not a valid Fernet key"
+        log.warning("%s: saving plugin headers is disabled until it is configured", reason)

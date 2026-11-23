@@ -11,7 +11,10 @@ WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
-ENV PATH="/app/.venv/bin:$PATH"
+ENV PATH="/app/.venv/bin:$PATH" \
+    TIKTOKEN_CACHE_DIR=/opt/tiktoken
+# Fetch the BPE file at build time so the runtime needs no network.
+RUN python -c "import tiktoken; tiktoken.get_encoding('o200k_base')" && chmod -R a+rX /opt/tiktoken
 
 COPY alembic.ini ./
 COPY alembic ./alembic

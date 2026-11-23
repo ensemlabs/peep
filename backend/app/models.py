@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import (
+    Boolean,
     BigInteger,
     CheckConstraint,
     DateTime,
@@ -90,6 +91,8 @@ class Conversation(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id", ondelete="CASCADE"))
     title: Mapped[str] = mapped_column(Text, default="", server_default="")
     model: Mapped[str | None] = mapped_column(String(128))
+    pinned: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
+    last_read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = _ts()
     updated_at: Mapped[datetime] = _ts()
 
@@ -110,6 +113,7 @@ class Message(Base):
     status: Mapped[str] = mapped_column(String(16), default="complete", server_default="complete")
     model: Mapped[str | None] = mapped_column(String(128))
     error: Mapped[str | None] = mapped_column(Text)
+    usage: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = _ts()
     updated_at: Mapped[datetime] = _ts(onupdate=utcnow)
 
@@ -138,3 +142,36 @@ class File(Base):
     thumb_key: Mapped[str | None] = mapped_column(Text)
     source: Mapped[str] = mapped_column(String(16), default="upload", server_default="upload")
     created_at: Mapped[datetime] = _ts()
+
+
+class Skill(Base):
+    __tablename__ = "skills"
+    __table_args__ = (Index("uq_skills_user_name", "user_id", "name", unique=True),)
+
+    id: Mapped[uuid.UUID] = _pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id", ondelete="CASCADE"))
+    name: Mapped[str] = mapped_column(String(64))
+    description: Mapped[str] = mapped_column(Text)
+    version: Mapped[str | None] = mapped_column(String(64))
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    size: Mapped[int] = mapped_column(BigInteger)
+    files: Mapped[list[Any]] = mapped_column(JSONB, default=list, server_default=text("'[]'::jsonb"))
+    created_at: Mapped[datetime] = _ts()
+    updated_at: Mapped[datetime] = _ts()
+
+
+class Plugin(Base):
+    __tablename__ = "plugins"
+    __table_args__ = (Index("uq_plugins_user_name", "user_id", text("lower(name)"), unique=True),)
+
+    id: Mapped[uuid.UUID] = _pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id", ondelete="CASCADE"))
+    name: Mapped[str] = mapped_column(String(64))
+    description: Mapped[str | None] = mapped_column(Text)
+    transport: Mapped[str] = mapped_column(String(8))
+    url: Mapped[str] = mapped_column(Text)
+    # [{"name": str, "value_enc": <Fernet token>}] -- values are never stored in clear
+    headers: Mapped[list[Any]] = mapped_column(JSONB, default=list, server_default=text("'[]'::jsonb"))
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    created_at: Mapped[datetime] = _ts()
+    updated_at: Mapped[datetime] = _ts()

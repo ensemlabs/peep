@@ -16,6 +16,9 @@ dependencies = [
   "boto3==1.43.127",
   "openai==3.48.0",
   "pillow==13.0.0",
+  "pyyaml==6.0.3",
+  "tiktoken==0.14.0",
+  "cryptography==50.0.2",
 ]
 
 [dependency-groups]

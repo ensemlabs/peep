@@ -1,19 +1,21 @@
-# GEMINI=1 (default) also joins the external llm-proxy network; use GEMINI=0 when it is not running.
-GEMINI ?= 1
+# GEMINI=1 joins the external llm-proxy network (free dev/test provider, see docs/dev/llm-proxy.md).
+GEMINI ?= 0
 COMPOSE_FILES = -f docker-compose.yml
 ifeq ($(GEMINI),1)
 COMPOSE_FILES += -f docker-compose.gemini.yml
 endif
 COMPOSE = docker compose $(COMPOSE_FILES)
-COMPOSE_E2E = docker compose $(COMPOSE_FILES) -f docker-compose.e2e.yml
+# e2e always runs against the llm-proxy dev provider plus the e2e overrides.
+COMPOSE_E2E = docker compose -f docker-compose.yml -f docker-compose.gemini.yml -f docker-compose.e2e.yml
 
 .PHONY: help env up down logs ps build test-be test-fe e2e e2e-down clean
 
 help:            ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-14s %s\n", $$1, $$2}'
 
-env:             ## Create .env from .env.example (if missing)
+env:             ## Create .env and config/models.yaml from the examples (if missing)
 	@test -f .env || cp .env.example .env
+	@test -f config/models.yaml || cp config/models.example.yaml config/models.yaml
 
 up: env          ## Start the stack in the background (build if needed)
 	$(COMPOSE) up -d --build

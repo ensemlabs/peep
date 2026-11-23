@@ -40,6 +40,10 @@ services:
       context: backend
       target: runtime
     env_file: .env
+    environment:
+      MODELS_CONFIG: ${MODELS_CONFIG:-/app/config/models.yaml}
+    volumes:
+      - ./config:/app/config:ro
     depends_on:
       postgres:
         condition: service_healthy

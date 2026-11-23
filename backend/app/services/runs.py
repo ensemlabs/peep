@@ -15,6 +15,7 @@ from app.db import get_sessionmaker
 from app.models import Conversation, Message
 from app.providers.base import Provider, ProviderError, RunContext, new_id
 from app.schemas import iso
+from app.services.usage import estimate_usage
 
 log = logging.getLogger(__name__)
 
@@ -43,6 +44,7 @@ def message_json(msg: Message, attachments: list[dict[str, Any]]) -> dict[str, A
         "status": msg.status,
         "model": msg.model,
         "error": msg.error,
+        "usage": msg.usage,
         "created_at": iso(msg.created_at),
     }
 
@@ -69,6 +71,8 @@ class RunState:
         self.parts: list[dict[str, Any]] = []
         self.status = "streaming"
         self.error: str | None = None
+        self.usage: dict[str, Any] | None = None
+        self.usage_hint: dict[str, Any] = {"input_tokens": 0, "ratio": 1.0}  # set by the provider for estimates
         self.task: asyncio.Task | None = None
         self._index: dict[str, dict[str, Any]] = {}
         self._subscribers: set[asyncio.Queue[Event | None]] = set()
@@ -99,6 +103,7 @@ class RunState:
             "status": self.status,
             "model": self.model,
             "error": self.error,
+            "usage": self.usage,
             "created_at": iso(self.created_at),
         }
 
@@ -163,6 +168,10 @@ class RunState:
         else:
             self._dirty = True
 
+    async def emit_usage(self, usage: dict[str, Any]) -> None:
+        self.usage = usage
+        self._publish(ev("usage", {"message_id": str(self.message_id), "usage": usage}))
+
     # -- persistence ---------------------------------------------------------------------------
 
     async def flush(self) -> None:
@@ -203,13 +212,45 @@ class RunState:
             ok = p["type"] == "thinking" or final_status == "complete"
             await self.emit_update(p["id"], {"status": "done" if ok else "error"})
 
+    def _texts(self) -> tuple[str, str]:
+        """(answer text, thinking text) over the whole part tree; tool output counts as answer text."""
+        answer: list[str] = []
+        thinking: list[str] = []
+        stack = list(self.parts)
+        while stack:
+            p = stack.pop(0)
+            stack = list(p.get("parts", [])) + stack
+            if p.get("type") == "thinking":
+                thinking.append(p.get("text") or "")
+            elif p.get("type") == "text":
+                answer.append(p.get("text") or "")
+            elif p.get("type") == "tool" and p.get("output"):
+                answer.append(p["output"])
+        return "".join(answer), "".join(thinking)
+
+    async def ensure_usage(self, status: str) -> None:
+        """Estimate usage when the provider reported none (stop, partial error, estimate-only providers).
+
+        Never fails the run: an estimation problem just means no usage for this message.
+        """
+        if self.usage is not None or (status == "error" and not self.parts):
+            return
+        try:
+            answer, thinking = self._texts()
+            usage = await asyncio.to_thread(
+                estimate_usage, self.usage_hint["input_tokens"], answer, thinking, self.usage_hint["ratio"]
+            )
+            await self.emit_usage(usage)
+        except Exception:
+            log.warning("usage estimation failed for message %s; continuing without usage", self.message_id, exc_info=True)
+
     async def finish(self, status: str, error: str | None) -> None:
         self.status, self.error = status, error
         try:
             await self.flush()
             async with get_sessionmaker()() as db:
                 await db.execute(
-                    update(Message).where(Message.id == self.message_id).values(status=status, error=error)
+                    update(Message).where(Message.id == self.message_id).values(status=status, error=error, usage=self.usage)
                 )
                 await db.execute(
                     update(Conversation).where(Conversation.id == self.conversation_id).values(updated_at=datetime.now(UTC))
@@ -267,6 +308,7 @@ class RunRegistry:
             await state.close_running(status)
         except Exception:
             log.exception("closing parts failed")
+        await state.ensure_usage(status)
         await state.finish(status, error)
         self._runs.pop(state.message_id, None)
         self._busy.discard(state.conversation_id)

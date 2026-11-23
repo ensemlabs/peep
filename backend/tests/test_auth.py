@@ -47,7 +47,7 @@ async def test_active_user_reaches_active_routes(client):
     await create_user("a@example.com")
     await login(client, "a@example.com")
     r = await client.get("/api/models")
-    assert r.status_code == 200 and r.json()["default"] == "gemini-pro" and r.json()["items"]
+    assert r.status_code == 200 and r.json()["active"]["id"] == "gemini-pro" and r.json()["items"]
 
 
 async def test_unauthenticated_me(client):

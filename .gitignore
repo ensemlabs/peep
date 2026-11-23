@@ -3,6 +3,9 @@
 .env.*
 !.env.example
 
+# Local model registry (copy of config/models.example.yaml)
+config/models.yaml
+
 # Python
 __pycache__/
 *.py[cod]

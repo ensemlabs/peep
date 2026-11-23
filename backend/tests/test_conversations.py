@@ -1,10 +1,6 @@
 import uuid
 
 import pytest
-from starlette.applications import Starlette
-from starlette.responses import JSONResponse
-from starlette.routing import Route
-
 from app.services import storage
 from tests.conftest import (
     active_client,
@@ -12,7 +8,6 @@ from tests.conftest import (
     login,
     new_conversation,
     send_message,
-    serve,
     sql,
 )
 from tests.test_files import png_bytes, upload
@@ -20,11 +15,11 @@ from tests.test_files import png_bytes, upload
 
 async def test_conversation_crud(make_client):
     c, user = await active_client(make_client)
-    assert (await c.get("/api/conversations")).json() == {"items": []}
+    assert (await c.get("/api/conversations")).json() == {"items": [], "next_before": None}
     r = await c.post("/api/conversations", json={"title": "  Hello  ", "model": "replay:agent-demo"})
     assert r.status_code == 201
     conv = r.json()["conversation"]
-    assert set(conv) == {"id", "title", "model", "created_at", "updated_at"}
+    assert set(conv) == {"id", "title", "model", "created_at", "updated_at", "pinned"}
     assert conv["title"] == "Hello" and conv["model"] == "replay:agent-demo"
     cid = conv["id"]
 
@@ -37,7 +32,12 @@ async def test_conversation_crud(make_client):
     assert (await c.patch(f"/api/conversations/{cid}", json={})).status_code == 422
 
     items = (await c.get("/api/conversations")).json()["items"]
-    assert items == [{"id": cid, "title": "Renamed", "model": "replay:agent-demo", "updated_at": items[0]["updated_at"]}]
+    assert items == [
+        {
+            "id": cid, "title": "Renamed", "model": "replay:agent-demo", "updated_at": items[0]["updated_at"],
+            "status": "idle", "unread": False, "preview": "", "pinned": False,
+        }
+    ]
 
     assert (await c.delete(f"/api/conversations/{cid}")).status_code == 204
     assert (await c.get(f"/api/conversations/{cid}")).status_code == 404
@@ -63,7 +63,7 @@ async def test_ownership(make_client):
     a, _ = await active_client(make_client)
     b, _ = await active_client(make_client)
     cid = await new_conversation(a)
-    assert (await b.get("/api/conversations")).json() == {"items": []}
+    assert (await b.get("/api/conversations")).json()["items"] == []
     for resp in (
         await b.get(f"/api/conversations/{cid}"),
         await b.patch(f"/api/conversations/{cid}", json={"title": "x"}),
@@ -101,51 +101,6 @@ async def test_pending_user_403_on_all_new_routes(make_client):
 async def test_unauthenticated_401(client):
     for r in (await client.get("/api/conversations"), await client.get("/api/models")):
         assert r.status_code == 401
-
-
-# --- models ----------------------------------------------------------------------------------
-
-
-def upstream_models_app(ids):
-    async def models(_):
-        return JSONResponse({"object": "list", "data": [{"id": i, "object": "model"} for i in ids]})
-
-    return Starlette(routes=[Route("/v1/models", models)])
-
-
-async def test_models_upstream_down_falls_back_to_allowlist(make_client):
-    c, _ = await active_client(make_client)
-    body = (await c.get("/api/models")).json()
-    ids = [m["id"] for m in body["items"]]
-    assert ids == ["gemini-pro", "gemini-flash-lite", "replay:agent-demo", "replay:error-demo"]
-    assert body["items"][0] == {"id": "gemini-pro", "label": "Gemini Pro", "provider": "openai", "reasoning": True}
-    assert body["items"][2] == {
-        "id": "replay:agent-demo", "label": "Replay · Agent demo", "provider": "replay", "reasoning": False,
-    }
-    assert body["default"] == "gemini-pro"
-
-
-async def test_models_filtered_by_allowlist_keeps_order_and_caches(make_client, settings, monkeypatch):
-    monkeypatch.setattr(settings, "llm_models", "gemini-flash-lite,gemini-pro,missing-model")
-    c, _ = await active_client(make_client)
-    async with serve(upstream_models_app(["gemini-pro", "gemini-flash-lite", "gemini-alias", "other"])) as url:
-        monkeypatch.setattr(settings, "llm_base_url", url + "/v1")
-        ids = [m["id"] for m in (await c.get("/api/models")).json()["items"] if m["provider"] == "openai"]
-        assert ids == ["gemini-flash-lite", "gemini-pro"]
-    # server is gone, but the answer is cached for 60 s
-    ids = [m["id"] for m in (await c.get("/api/models")).json()["items"] if m["provider"] == "openai"]
-    assert ids == ["gemini-flash-lite", "gemini-pro"]
-
-
-async def test_models_no_allowlist_uses_upstream_and_replay_toggle(make_client, settings, monkeypatch):
-    monkeypatch.setattr(settings, "llm_models", "")
-    monkeypatch.setattr(settings, "replay_enabled", False)
-    c, _ = await active_client(make_client)
-    async with serve(upstream_models_app(["a-model", "b-model"])) as url:
-        monkeypatch.setattr(settings, "llm_base_url", url + "/v1")
-        body = (await c.get("/api/models")).json()
-    assert [m["id"] for m in body["items"]] == ["a-model", "b-model"]
-    assert body["default"] == "a-model"  # configured default is not offered
 
 
 async def test_invalid_model_rejected(make_client):

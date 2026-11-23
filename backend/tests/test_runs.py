@@ -175,8 +175,8 @@ async def test_message_validation_and_titles(make_client):
     cid = await new_conversation(c)
     r, _ = await send_message(c, cid, "   ", model="replay:error-demo")
     assert r.status_code == 422 and r.json()["error"]["code"] == "empty_message"
-    r, _ = await send_message(c, cid, "x", model="replay:error-demo", reasoning="medium")
-    assert r.status_code == 422
+    r, _ = await send_message(c, cid, "x", model="gemini-pro", reasoning="medium")
+    assert r.status_code == 422 and r.json()["error"]["code"] == "invalid_reasoning_level"
     r, _ = await send_message(c, cid, "x", model="replay:error-demo", attachment_ids=[str(uuid.uuid4())])
     assert r.status_code == 422 and r.json()["error"]["code"] == "invalid_attachment"
     assert (await sql("SELECT count(*) FROM messages"))[0][0] == 0

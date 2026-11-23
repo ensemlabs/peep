@@ -114,3 +114,27 @@ async def test_streaming_messages_marked_interrupted():
     async with get_sessionmaker()() as db:
         msgs = (await db.execute(select(Message))).scalars().all()
     assert {(m.status, m.error) for m in msgs} == {("error", "interrupted"), ("complete", None)}
+
+
+async def test_app_lifespan_starts_and_stops(settings, monkeypatch):
+    from app.main import app
+
+    monkeypatch.setattr(settings, "admin_email", "")
+    async with app.router.lifespan_context(app):
+        pass
+
+
+async def test_lifespan_fails_fast_on_invalid_models_config(settings, monkeypatch, tmp_path):
+    import pytest
+
+    from app.main import app
+    from app.services import model_registry
+    from app.services.model_registry import ConfigError
+
+    bad = tmp_path / "models.yaml"
+    bad.write_text("active: nope\nproviders: []\n")
+    monkeypatch.setattr(settings, "models_config", str(bad))
+    model_registry.reset()
+    with pytest.raises(ConfigError):
+        async with app.router.lifespan_context(app):
+            pass

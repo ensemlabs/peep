@@ -274,3 +274,77 @@ async def test_missing_object_is_404_not_500(make_client):
     meta = await _video(c)
     await storage.delete_prefix("u/")
     assert (await c.get(meta["url"])).status_code == 404
+
+
+async def test_delete_unsent_upload(make_client):
+    c, user = await active_client(make_client)
+    cid = await new_conversation(c)
+    meta = (await upload(c, png_bytes(), "p.png", "image/png", conversation_id=cid)).json()["file"]
+    obj, thumb = (await sql("SELECT object_key, thumb_key FROM files"))[0]
+    before = (await c.get("/api/context", params={"conversation_id": cid})).json()
+    assert before["used_tokens"] > 0
+    assert (await c.delete(f"/api/files/{meta['id']}")).status_code == 204
+    assert await storage.head(obj) is None and await storage.head(thumb) is None
+    assert (await sql("SELECT count(*) FROM files"))[0][0] == 0
+    assert (await c.get(meta["url"])).status_code == 404
+    assert (await c.get("/api/context", params={"conversation_id": cid})).json()["used_tokens"] == 0
+    assert (await c.delete(f"/api/files/{meta['id']}")).status_code == 404
+
+
+async def test_delete_attached_or_generated_file_is_409(make_client):
+    from tests.conftest import send_message
+
+    c, _ = await active_client(make_client)
+    cid = await new_conversation(c)
+    meta = (await upload(c, png_bytes(), "p.png", "image/png")).json()["file"]
+    r, _ = await send_message(c, cid, "x", model="replay:error-demo", attachment_ids=[meta["id"]])
+    assert r.status_code == 200
+    r = await c.delete(f"/api/files/{meta['id']}")
+    assert r.status_code == 409 and r.json()["error"]["code"] == "file_in_use"
+    assert (await c.get(meta["url"])).status_code == 200
+    gen = (await sql("SELECT id FROM files WHERE source = 'generated' LIMIT 1")) or []
+    if gen:
+        assert (await c.delete(f"/api/files/{gen[0][0]}")).status_code == 409
+
+
+async def test_delete_file_ownership_and_pending(make_client):
+    from tests.conftest import create_user, login
+
+    a, _ = await active_client(make_client)
+    b, _ = await active_client(make_client)
+    meta = (await upload(a, b"x", "a.txt", "text/plain")).json()["file"]
+    r = await b.delete(f"/api/files/{meta['id']}")
+    assert r.status_code == 404 and r.json()["error"]["code"] == "not_found"
+    assert (await a.get(meta["url"])).status_code == 200
+    await create_user("p@example.com", status="pending")
+    p = make_client()
+    await login(p, "p@example.com")
+    r = await p.delete(f"/api/files/{meta['id']}")
+    assert r.status_code == 403 and r.json()["error"]["code"] == "account_pending"
+    assert (await make_client().delete(f"/api/files/{meta['id']}")).status_code == 401
+
+
+async def test_delete_survives_s3_failure(make_client, monkeypatch):
+    c, _ = await active_client(make_client)
+    meta = (await upload(c, b"x", "a.txt", "text/plain")).json()["file"]
+
+    async def boom(keys):
+        raise RuntimeError("s3 down")
+
+    monkeypatch.setattr(storage, "delete_keys", boom)
+    assert (await c.delete(f"/api/files/{meta['id']}")).status_code == 204
+    assert (await sql("SELECT count(*) FROM files"))[0][0] == 0
+
+
+async def test_context_counts_drafts_only_of_the_requested_conversation(make_client):
+    c, _ = await active_client(make_client)
+    chat_a, chat_b = await new_conversation(c), await new_conversation(c)
+    await upload(c, png_bytes(), "a.png", "image/png", conversation_id=chat_a)
+    await upload(c, png_bytes(), "new.png", "image/png")  # no conversation: belongs to a new chat
+
+    def att(body):
+        return {b["key"]: b for b in body["breakdown"]}["attachments"]["tokens"]
+
+    assert att((await c.get("/api/context", params={"conversation_id": chat_a})).json()) > 0
+    assert att((await c.get("/api/context", params={"conversation_id": chat_b})).json()) == 0
+    assert att((await c.get("/api/context")).json()) > 0  # new chat: uploads with no conversation

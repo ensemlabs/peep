@@ -1,5 +1,6 @@
 import asyncio
 import hashlib
+import logging
 import re
 import uuid
 from tempfile import SpooledTemporaryFile
@@ -17,6 +18,7 @@ from app.errors import ApiError
 from app.models import Conversation, File, User
 from app.services import media, storage
 
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/files", tags=["files"])
 
 SPOOL_MAX = 1024 * 1024
@@ -25,6 +27,10 @@ MULTIPART_OVERHEAD = 1024 * 1024
 
 
 # --- upload -----------------------------------------------------------------------------------
+
+
+def _mb(n: int) -> str:
+    return f"{n / 1024 / 1024:g} MB"
 
 
 class _Upload:
@@ -41,7 +47,7 @@ class _Upload:
             self.file.close()
 
 
-async def _read_upload(request: Request, max_bytes: int) -> _Upload:
+async def read_upload(request: Request, max_bytes: int) -> _Upload:
     """Stream the multipart body into a spooled temp file, enforcing the size limit as it arrives."""
     ctype = request.headers.get("content-type", "")
     disposition, params = parse_options_header(ctype)
@@ -49,7 +55,7 @@ async def _read_upload(request: Request, max_bytes: int) -> _Upload:
         raise ApiError(422, "invalid_request", "Expected multipart/form-data with a file")
     declared = request.headers.get("content-length")
     if declared and declared.isdigit() and int(declared) > max_bytes + MULTIPART_OVERHEAD:
-        raise ApiError(413, "file_too_large", f"File exceeds {get_settings().max_upload_mb} MB")
+        raise ApiError(413, "file_too_large", f"File exceeds {_mb(max_bytes)}")
 
     up = _Upload()
     state: dict = {"headers": [], "name": b"", "value": b"", "part": None, "buf": bytearray()}
@@ -89,7 +95,7 @@ async def _read_upload(request: Request, max_bytes: int) -> _Upload:
         if state["part"] == "file":
             up.size += len(chunk)
             if up.size > max_bytes:
-                raise ApiError(413, "file_too_large", f"File exceeds {get_settings().max_upload_mb} MB")
+                raise ApiError(413, "file_too_large", f"File exceeds {_mb(max_bytes)}")
             up.sha.update(chunk)
             pending.append(chunk)
         elif state["part"]:
@@ -132,7 +138,7 @@ async def _read_upload(request: Request, max_bytes: int) -> _Upload:
 
 @router.post("", status_code=201)
 async def upload_file(request: Request, user: User = Depends(active_user), db: AsyncSession = Depends(get_db)):
-    up = await _read_upload(request, get_settings().max_upload_bytes)
+    up = await read_upload(request, get_settings().max_upload_bytes)
     try:
         if up.file is None:
             raise ApiError(422, "invalid_request", "Missing 'file' part")
@@ -163,6 +169,29 @@ async def upload_file(request: Request, user: User = Depends(active_user), db: A
     finally:
         up.close()
     return {"file": media.file_meta(row)}
+
+
+# --- delete -----------------------------------------------------------------------------------
+
+
+@router.delete("/{file_id}", status_code=204)
+async def delete_file(
+    file_id: uuid.UUID, user: User = Depends(active_user), db: AsyncSession = Depends(get_db)
+) -> Response:
+    """Remove an unsent upload (e.g. the user dropped the attachment chip). Sent or generated files stay."""
+    f = await db.get(File, file_id)
+    if f is None or f.user_id != user.id:
+        raise ApiError(404, "not_found", "File not found")
+    if f.message_id is not None or f.source != "upload":
+        raise ApiError(409, "file_in_use", "This file is attached to a message and cannot be deleted")
+    keys = [k for k in (f.object_key, f.thumb_key) if k]
+    await db.delete(f)
+    await db.commit()
+    try:
+        await storage.delete_keys(keys)  # after the DB commit: a failure only leaves orphan objects
+    except Exception:
+        log.warning("could not delete objects of file %s", file_id, exc_info=True)
+    return Response(status_code=204)
 
 
 # --- download ---------------------------------------------------------------------------------
