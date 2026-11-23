@@ -74,4 +74,11 @@ describe('applyEvent', () => {
     m = applyEvent(m, part(null, text('p1', 'ab')))
     expect(m.parts).toHaveLength(1)
   })
+
+  it('stores usage on the message', () => {
+    const usage = { input_tokens: 10, output_tokens: 5, reasoning_tokens: null, cache_read_tokens: null, cache_write_tokens: null, total_tokens: 15, source: 'estimate' as const }
+    const m = applyEvent(base, { type: 'usage', data: { message_id: 'm1', usage } })
+    expect(m.usage).toEqual(usage)
+    expect(base.usage).toBeUndefined()
+  })
 })

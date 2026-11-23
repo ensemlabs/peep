@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { ArrowUp, FileText, Film, Music, Paperclip, Square, X, AlertCircle } from 'lucide-react'
-import { uploadFile as defaultUpload } from '@/api/client'
+import { api, uploadFile as defaultUpload } from '@/api/client'
 import type { FileMeta } from '@/api/types'
 import { useI18n } from '@/i18n'
 import { formatBytes } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { Spinner } from '@/components/ui/Spinner'
 
-type Upload = (file: File, onProgress: (f: number) => void, signal?: AbortSignal) => Promise<FileMeta>
+type Upload = (file: File, onProgress: (f: number) => void, signal?: AbortSignal, opts?: { conversationId?: string }) => Promise<FileMeta>
 
 interface Attachment {
   key: string
@@ -26,13 +26,24 @@ interface Props {
   onSend: (text: string, attachments: FileMeta[]) => void
   onStop: () => void
   upload?: Upload
+  /** Set inside /c/:id so uploads are tied to that conversation; absent on the new-chat page. */
+  conversationId?: string
+  /** Deletes an uploaded, not-yet-sent file on the server (404/409 are ignored). */
+  removeFile?: (id: string) => Promise<unknown>
   autoFocus?: boolean
   initialText?: string
+  /** Slot next to Send (the context ring); receives the live draft. */
+  renderRing?: (draft: { text: string }) => ReactNode
+  /** Toolbar slot after the attach button (thinking level). */
+  toolbar?: ReactNode
+  /** Called when the set of ready attachments changes (add/remove/finish). */
+  onAttachmentsChange?: (count: number) => void
 }
 
 let seq = 0
+const defaultRemove = (id: string) => api.deleteFile(id).catch(() => {})
 
-export function Composer({ streaming, disabled, onSend, onStop, upload = defaultUpload, autoFocus, initialText = '' }: Props) {
+export function Composer({ streaming, disabled, onSend, onStop, upload = defaultUpload, conversationId, removeFile = defaultRemove, autoFocus, initialText = '', renderRing, toolbar, onAttachmentsChange }: Props) {
   const { t, err } = useI18n()
   const [text, setText] = useState(initialText)
   const [items, setItems] = useState<Attachment[]>([])
@@ -81,7 +92,7 @@ export function Composer({ streaming, disabled, onSend, onStop, upload = default
       }))
       setItems((list) => [...list, ...created])
       created.forEach((a) => {
-        upload(a.file, (progress) => patch(a.key, { progress }), a.controller.signal)
+        upload(a.file, (progress) => patch(a.key, { progress }), a.controller.signal, { conversationId })
           .then((meta) => patch(a.key, { status: 'done', meta, progress: 1 }))
           .catch((e) => {
             if (a.controller.signal.aborted) return
@@ -89,7 +100,7 @@ export function Composer({ streaming, disabled, onSend, onStop, upload = default
           })
       })
     },
-    [upload, patch, err],
+    [upload, patch, err, conversationId],
   )
 
   // Window-level drag & drop.
@@ -130,6 +141,17 @@ export function Composer({ streaming, disabled, onSend, onStop, upload = default
 
   const uploading = items.some((a) => a.status === 'uploading')
   const ready = items.filter((a) => a.status === 'done' && a.meta)
+  const readyCount = ready.length
+  const onChangeRef = useRef(onAttachmentsChange)
+  onChangeRef.current = onAttachmentsChange
+  const firstRun = useRef(true)
+  useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false
+      return
+    }
+    onChangeRef.current?.(readyCount)
+  }, [readyCount])
   const canSend = !disabled && !uploading && (text.trim().length > 0 || ready.length > 0)
 
   function submit() {
@@ -159,11 +181,12 @@ export function Composer({ streaming, disabled, onSend, onStop, upload = default
   function remove(a: Attachment) {
     a.controller.abort()
     if (a.preview) URL.revokeObjectURL(a.preview)
+    if (a.meta) void removeFile(a.meta.id)
     setItems((list) => list.filter((x) => x.key !== a.key))
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-3 pb-3 sm:px-4 sm:pb-4">
+    <div className="mx-auto w-full max-w-[760px] bg-gradient-to-t from-bg from-70% to-transparent px-3 pb-3 pt-4 sm:px-4 sm:pb-4">
       {dragging && (
         <div
           data-testid="drop-overlay"
@@ -172,7 +195,7 @@ export function Composer({ streaming, disabled, onSend, onStop, upload = default
           <div className="rounded-2xl border-2 border-dashed border-fg/40 px-8 py-6 text-lg font-medium">{t('chat.dropHere')}</div>
         </div>
       )}
-      <div className="rounded-2xl border border-line bg-surface shadow-sm focus-within:border-fg/40">
+      <div className="rounded-2xl border border-line bg-bg shadow-[0_4px_24px_-8px_rgb(0_0_0/0.18)] transition-shadow focus-within:border-fg/30 focus-within:shadow-[0_6px_28px_-8px_rgb(0_0_0/0.25)]">
         {items.length > 0 && (
           <ul className="flex flex-wrap gap-2 px-3 pt-3" aria-label={t('chat.attach')}>
             {items.map((a) => (
@@ -222,6 +245,7 @@ export function Composer({ streaming, disabled, onSend, onStop, upload = default
         <textarea
           ref={taRef}
           data-testid="composer-input"
+          data-composer
           rows={1}
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -230,9 +254,10 @@ export function Composer({ streaming, disabled, onSend, onStop, upload = default
           disabled={disabled}
           placeholder={t('chat.placeholder')}
           aria-label={t('chat.placeholder')}
-          className="block max-h-[40dvh] min-h-[44px] w-full resize-none bg-transparent px-4 py-3 text-[15px] leading-6 placeholder:text-muted focus:outline-none focus-visible:outline-none"
+          className="block max-h-[40dvh] min-h-[44px] w-full resize-none bg-transparent px-4 pb-1 pt-3 text-[15px] leading-6 placeholder:text-muted focus:outline-none focus-visible:outline-none"
         />
-        <div className="flex items-center justify-between px-2 pb-2">
+        <div className="flex items-center justify-between gap-1 px-2 pb-2">
+          <div className="flex min-w-0 items-center gap-0.5">
           <input
             ref={fileRef}
             type="file"
@@ -251,10 +276,14 @@ export function Composer({ streaming, disabled, onSend, onStop, upload = default
             aria-label={t('chat.attach')}
             title={t('chat.attach')}
             data-testid="attach-button"
-            className="rounded-lg p-2 text-muted hover:bg-hover hover:text-fg disabled:opacity-50"
+            className="flex items-center justify-center rounded-full p-2 text-muted hover:bg-hover hover:text-fg disabled:opacity-50 tap:size-10 tap:p-0"
           >
             <Paperclip className="size-5" />
           </button>
+            {toolbar}
+          </div>
+          <div className="flex items-center gap-1">
+          {renderRing?.({ text })}
           {streaming ? (
             <button
               type="button"
@@ -262,7 +291,7 @@ export function Composer({ streaming, disabled, onSend, onStop, upload = default
               aria-label={t('chat.stop')}
               title={t('chat.stop')}
               data-testid="stop-button"
-              className="flex size-9 items-center justify-center rounded-full bg-accent text-accent-fg hover:opacity-90"
+              className="flex size-9 items-center justify-center rounded-full bg-accent text-accent-fg hover:opacity-90 tap:size-10"
             >
               <Square className="size-4 fill-current" />
             </button>
@@ -274,11 +303,12 @@ export function Composer({ streaming, disabled, onSend, onStop, upload = default
               aria-label={t('chat.send')}
               title={t('chat.send')}
               data-testid="send-button"
-              className="flex size-9 items-center justify-center rounded-full bg-accent text-accent-fg transition-opacity hover:opacity-90 disabled:opacity-30"
+              className="flex size-9 items-center justify-center rounded-full bg-accent text-accent-fg transition-opacity hover:opacity-90 disabled:opacity-30 tap:size-10"
             >
               {uploading ? <Spinner /> : <ArrowUp className="size-5" />}
             </button>
           )}
+          </div>
         </div>
       </div>
     </div>

@@ -1,22 +1,18 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { en, type TKey } from './en'
 import { vi } from './vi'
-import { readStorage, writeStorage } from '@/lib/storage'
+import { writeStorage } from '@/lib/storage'
+import { detectLang, LANG_KEY, type Lang } from '@/lib/lang'
 import { ApiError } from '@/api/client'
 
-export type Lang = 'en' | 'vi'
+export type { Lang }
 export type { TKey }
 export type Vars = Record<string, string | number>
 
 const DICTS: Record<Lang, Record<TKey, string>> = { en, vi }
-const STORAGE_KEY = 'ec_lang'
+const STORAGE_KEY = LANG_KEY
 
-export function detectLang(): Lang {
-  const saved = readStorage(STORAGE_KEY)
-  if (saved === 'en' || saved === 'vi') return saved
-  const nav = typeof navigator !== 'undefined' ? navigator.language || '' : ''
-  return nav.toLowerCase().startsWith('vi') ? 'vi' : 'en'
-}
+export { detectLang }
 
 export function interpolate(template: string, vars?: Vars): string {
   if (!vars) return template
@@ -31,7 +27,7 @@ export type TFn = (key: TKey, vars?: Vars) => string
 
 const KNOWN_ERRORS = new Set([
   'invalid_credentials', 'account_disabled', 'account_pending', 'too_many_attempts', 'email_taken',
-  'weak_password', 'invalid_email', 'invalid_display_name', 'invalid_current_password', 'file_too_large', 'unsupported_type', 'cannot_modify_self',
+  'weak_password', 'invalid_email', 'invalid_reasoning_level', 'invalid_skill', 'skill_exists', 'invalid_plugin', 'plugin_exists', 'too_many_plugins', 'file_in_use', 'secrets_not_configured', 'invalid_display_name', 'invalid_current_password', 'file_too_large', 'unsupported_type', 'cannot_modify_self',
   'bad_origin', 'run_in_progress', 'invalid_model', 'empty_message', 'invalid_attachment', 'empty_file', 'invalid_request', 'forbidden', 'unauthenticated', 'not_found',
 ])
 

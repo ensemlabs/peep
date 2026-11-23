@@ -3,10 +3,32 @@ import { api, ApiError, type SendBody } from '@/api/client'
 import { streamEvents } from '@/api/sse'
 import type { FileMeta, Message, StreamEvent } from '@/api/types'
 import { applyEvent } from './applyEvent'
+import { whenVisible } from '@/lib/visibility'
 import { useRunStore } from './stores'
 
 export const convKey = (id: string) => ['conversation', id] as const
 export const CONVERSATIONS_KEY = ['conversations'] as const
+export const CONTEXT_KEY = ['context'] as const
+
+/** `${conversationId}` -> `convId:lastMessageId:status` already marked read, so ChatPage does not POST /read again. */
+export const readMarks = new Map<string, string>()
+
+export function readKeyFor(conversationId: string, messages: Message[] | undefined): string | null {
+  const last = messages?.[messages.length - 1]
+  return last ? `${conversationId}:${last.id}:${last.status}` : null
+}
+
+/** Mark a conversation read once the tab is visible (so the unread badge works from another tab). */
+export function markReadWhenVisible(qc: QueryClient, conversationId: string, key: string | null): () => void {
+  if (key && readMarks.get(conversationId) === key) return () => {}
+  return whenVisible(() => {
+    if (key) readMarks.set(conversationId, key)
+    api
+      .markRead(conversationId)
+      .catch(() => {})
+      .finally(() => qc.invalidateQueries({ queryKey: CONVERSATIONS_KEY }))
+  })
+}
 
 type Frame = (cb: () => void) => void
 const raf: Frame = (cb) =>
@@ -65,12 +87,19 @@ async function drive(
     // Stream closed without a terminal event (connection dropped): give the server a moment, then resync.
     await new Promise((r) => setTimeout(r, 1500))
   }
+  let fresh: { messages: Message[] } | undefined
   try {
-    await qc.fetchQuery({ queryKey: convKey(conversationId), queryFn: () => api.conversation(conversationId), staleTime: 0 })
+    fresh = await qc.fetchQuery({ queryKey: convKey(conversationId), queryFn: () => api.conversation(conversationId), staleTime: 0 })
   } catch {
     /* keep the cache as is */
   }
+  // One refresh of the list and of the context per run.
   qc.invalidateQueries({ queryKey: CONVERSATIONS_KEY })
+  qc.invalidateQueries({ queryKey: CONTEXT_KEY })
+  // The user is looking at this conversation: it is read as soon as the run ends (and the tab is visible).
+  if (typeof window !== 'undefined' && window.location.pathname === `/c/${conversationId}`) {
+    markReadWhenVisible(qc, conversationId, readKeyFor(conversationId, fresh?.messages))
+  }
   finished = true
   useRunStore.getState().clearRun(conversationId)
 }
@@ -84,7 +113,7 @@ export function sendMessage(
   const now = new Date().toISOString()
   const optimistic: Message = {
     id: `tmp-${Date.now()}`, role: 'user', content: body.content, attachments, parts: [],
-    status: 'complete', model: body.model, created_at: now,
+    status: 'complete', model: body.model ?? '', created_at: now,
   }
   return drive(conversationId, qc, { user: optimistic, assistant: null }, (onEvent, signal) =>
     streamEvents(`/api/conversations/${conversationId}/messages`, { method: 'POST', body }, onEvent, signal),

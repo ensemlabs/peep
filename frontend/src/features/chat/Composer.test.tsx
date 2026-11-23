@@ -9,11 +9,12 @@ const meta = (name: string): FileMeta => ({
   id: 'id-' + name, kind: 'file', mime: 'text/plain', filename: name, size: 3, url: '/u', download_url: '/d',
 })
 const okUpload = vi.fn(async (f: File) => meta(f.name))
+const removeFile = vi.fn(async () => {})
 
 function setup(props: Partial<React.ComponentProps<typeof Composer>> = {}) {
   const onSend = vi.fn()
   const onStop = vi.fn()
-  renderWithI18n(<Composer streaming={false} onSend={onSend} onStop={onStop} upload={okUpload} {...props} />)
+  renderWithI18n(<Composer streaming={false} onSend={onSend} onStop={onStop} upload={okUpload} removeFile={removeFile} {...props} />)
   return { onSend, onStop, input: screen.getByTestId('composer-input') as HTMLTextAreaElement }
 }
 
@@ -50,8 +51,10 @@ describe('Composer', () => {
     expect(onSend).toHaveBeenCalledWith('', [expect.objectContaining({ id: 'id-a.txt' })])
 
     await userEvent.upload(screen.getByTestId('file-input'), new File(['x'], 'b.txt', { type: 'text/plain' }))
+    await waitFor(() => expect(screen.getByTestId('attachment-chip')).toHaveAttribute('data-status', 'done'))
     await userEvent.click(await screen.findByRole('button', { name: 'Remove b.txt' }))
     expect(screen.queryByTestId('attachment-chip')).toBeNull()
+    expect(removeFile).toHaveBeenCalledWith('id-b.txt')
   })
   it('disables Send while an upload is in flight', async () => {
     let finish!: (m: FileMeta) => void

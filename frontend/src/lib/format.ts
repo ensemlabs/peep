@@ -29,3 +29,33 @@ export function toMillis(iso: string | undefined | null): number | null {
   const v = Date.parse(iso)
   return Number.isNaN(v) ? null : v
 }
+
+/** Compact token counts: 950, 1.2k, 12.3k, 128k, 1M, 1.5M. */
+export function formatTokens(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return '—'
+  const trim = (v: number) => (v >= 100 ? String(Math.round(v)) : v.toFixed(1).replace(/\.0$/, ''))
+  if (n < 1000) return String(Math.round(n))
+  if (n < 1_000_000) return `${trim(n / 1000)}k`
+  return `${trim(n / 1_000_000)}M`
+}
+
+export interface UsageLike {
+  input_tokens: number
+  output_tokens: number
+  cache_read_tokens: number | null
+  source: 'provider' | 'estimate'
+}
+
+/** "≈ 1.2k → 340 · cache 900" (≈ only for estimates, cache only when reported). */
+export function usageSummary(u: UsageLike): string {
+  const main = `${formatTokens(u.input_tokens)} → ${formatTokens(u.output_tokens)}`
+  const cache = u.cache_read_tokens != null ? ` · cache ${formatTokens(u.cache_read_tokens)}` : ''
+  return `${u.source === 'estimate' ? '≈ ' : ''}${main}${cache}`
+}
+
+export function timeOfDay(hour: number): 'morning' | 'afternoon' | 'evening' | 'night' {
+  if (hour >= 5 && hour < 12) return 'morning'
+  if (hour >= 12 && hour < 18) return 'afternoon'
+  if (hour >= 18 && hour < 22) return 'evening'
+  return 'night'
+}

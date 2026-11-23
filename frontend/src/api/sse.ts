@@ -1,8 +1,8 @@
 import { createParser } from 'eventsource-parser'
-import { ApiError, handleUnauthenticated, parseError } from './client'
+import { ApiError, baseHeaders, handleUnauthenticated, parseError } from './client'
 import type { StreamEvent } from './types'
 
-const EVENT_NAMES = new Set(['message', 'part', 'delta', 'update', 'done', 'snapshot'])
+const EVENT_NAMES = new Set(['message', 'part', 'delta', 'update', 'done', 'snapshot', 'usage'])
 
 /** Read an SSE endpoint with fetch; calls `onEvent` per contract event. Resolves when the stream ends. */
 export async function streamEvents(
@@ -17,6 +17,7 @@ export async function streamEvents(
       method: init.method,
       credentials: 'same-origin',
       headers: {
+        ...baseHeaders(),
         Accept: 'text/event-stream',
         ...(init.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
       },

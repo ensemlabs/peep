@@ -4,6 +4,7 @@ import { RegisterPage } from '@/features/auth/RegisterPage'
 import { AuthGuard } from '@/layout/AuthGuard'
 import { ChatRoute } from '@/features/chat/ChatPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
+import { IntegrationsPage } from '@/features/settings/IntegrationsPage'
 import { AdminGuard } from '@/features/admin/AdminUsersPage'
 
 export function App() {
@@ -15,6 +16,7 @@ export function App() {
         <Route path="/" element={<ChatRoute />} />
         <Route path="/c/:id" element={<ChatRoute />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/settings/integrations" element={<IntegrationsPage />} />
         <Route path="/admin/users" element={<AdminGuard />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { Part } from '@/api/types'
 import { Markdown } from './Markdown'
 import { ThinkingBlock } from './ThinkingBlock'
@@ -5,7 +6,7 @@ import { ToolCard } from './ToolCard'
 import { SubagentCard } from './SubagentCard'
 import { MediaGrid } from '../../media/MediaGrid'
 
-export function PartsRenderer({ parts, live }: { parts: Part[]; live: boolean }) {
+export const PartsRenderer = memo(function PartsRenderer({ parts, live }: { parts: Part[]; live: boolean }) {
   return (
     <>
       {parts.map((part) => {
@@ -26,4 +27,4 @@ export function PartsRenderer({ parts, live }: { parts: Part[]; live: boolean })
       })}
     </>
   )
-}
+})

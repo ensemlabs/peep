@@ -5,15 +5,31 @@ import { useT } from '@/i18n'
 import { MessageView } from './MessageView'
 import { EmptyState } from './EmptyState'
 
+function MessageSkeleton() {
+  return (
+    <div className="space-y-5" aria-hidden data-testid="message-skeleton">
+      <div className="ml-auto h-9 w-2/5 animate-pulse rounded-2xl bg-surface-2" />
+      <div className="space-y-2">
+        <div className="h-4 w-11/12 animate-pulse rounded bg-surface-2" />
+        <div className="h-4 w-4/5 animate-pulse rounded bg-surface-2" />
+        <div className="h-4 w-3/5 animate-pulse rounded bg-surface-2" />
+      </div>
+    </div>
+  )
+}
+
 interface Props {
   messages: Message[]
   conversationKey: string
   onExample: (text: string) => void
+  userName?: string
+  loading?: boolean
+  onStop?: () => void
 }
 
 const THRESHOLD = 80
 
-export function MessageList({ messages, conversationKey, onExample }: Props) {
+export function MessageList({ messages, conversationKey, onExample, userName, loading, onStop }: Props) {
   const t = useT()
   const scroller = useRef<HTMLDivElement>(null)
   const content = useRef<HTMLDivElement>(null)
@@ -60,11 +76,13 @@ export function MessageList({ messages, conversationKey, onExample }: Props) {
   return (
     <div className="relative min-h-0 flex-1">
       <div ref={scroller} onScroll={onScroll} className="h-full overflow-y-auto overflow-x-hidden" data-testid="message-scroller">
-        <div ref={content} role="log" aria-label={t('chat.messageList')} className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-3 py-6 sm:px-4">
-          {messages.length === 0 ? (
-            <EmptyState onExample={onExample} />
+        <div ref={content} role="log" aria-label={t('chat.messageList')} className="mx-auto flex w-full max-w-[760px] flex-col gap-5 px-3 py-5 sm:px-4">
+          {messages.length === 0 && loading ? (
+            <MessageSkeleton />
+          ) : messages.length === 0 ? (
+            <EmptyState onExample={onExample} name={userName} />
           ) : (
-            messages.map((m) => <MessageView key={m.id} message={m} />)
+            messages.map((m, i) => <MessageView key={m.id} message={m} isLast={i === messages.length - 1} onStop={onStop} />)
           )}
         </div>
       </div>

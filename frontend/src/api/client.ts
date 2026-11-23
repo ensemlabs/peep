@@ -1,6 +1,13 @@
+import { detectLang } from '@/lib/lang'
 import type {
-  Conversation, FileMeta, Message, ModelInfo, Reasoning, Role, User, UserStatus,
+  ContextInfo, Conversation, FileMeta, Message, ModelsResponse, Plugin, PluginInput, Role, Skill, SkillDetail,
+  User, UserStatus,
 } from './types'
+
+/** Headers sent on every API call: the backend localises model labels by Accept-Language. */
+export function baseHeaders(): Record<string, string> {
+  return { 'Accept-Language': detectLang() }
+}
 
 export class ApiError extends Error {
   constructor(
@@ -41,14 +48,14 @@ export function handleUnauthenticated(path: string, err: ApiError) {
   if (err.status === 401 && !path.startsWith('/api/auth/')) redirectToLogin()
 }
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function request<T>(method: string, path: string, body?: unknown, form?: FormData): Promise<T> {
   let res: Response
   try {
     res = await fetch(path, {
       method,
       credentials: 'same-origin',
-      headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      headers: { ...baseHeaders(), ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
+      body: form ?? (body !== undefined ? JSON.stringify(body) : undefined),
     })
   } catch {
     throw new ApiError('network', 0, 'network error')
@@ -66,6 +73,7 @@ const get = <T,>(p: string) => request<T>('GET', p)
 const post = <T,>(p: string, b?: unknown) => request<T>('POST', p, b)
 const patch = <T,>(p: string, b: unknown) => request<T>('PATCH', p, b)
 const del = <T,>(p: string) => request<T>('DELETE', p)
+const postForm = <T,>(p: string, f: FormData) => request<T>('POST', p, undefined, f)
 
 export const api = {
   me: () => get<{ user: User }>('/api/auth/me').then((r) => r.user),
@@ -91,38 +99,81 @@ export const api = {
     post<void>(`/api/admin/users/${id}/password`, { new_password }),
   adminDeleteUser: (id: string) => del<void>(`/api/admin/users/${id}`),
 
-  models: () => get<{ items: ModelInfo[]; default: string }>('/api/models'),
+  models: () => get<ModelsResponse>('/api/models'),
+  context: (conversationId?: string) =>
+    get<ContextInfo>(`/api/context${conversationId ? `?conversation_id=${encodeURIComponent(conversationId)}` : ''}`),
 
-  conversations: () => get<{ items: Conversation[] }>('/api/conversations?limit=100'),
+  skills: () => get<{ items: Skill[] }>('/api/skills'),
+  uploadSkill: (file: File, replace = false) => {
+    const f = new FormData()
+    f.append('file', file)
+    return postForm<{ skill: Skill }>(`/api/skills${replace ? '?replace=true' : ''}`, f).then((r) => r.skill)
+  },
+  skill: (id: string) => get<SkillDetail>(`/api/skills/${id}`),
+  setSkillEnabled: (id: string, enabled: boolean) =>
+    patch<{ skill: Skill }>(`/api/skills/${id}`, { enabled }).then((r) => r.skill),
+  deleteSkill: (id: string) => del<void>(`/api/skills/${id}`),
+
+  plugins: () => get<{ items: Plugin[] }>('/api/plugins'),
+  createPlugin: (body: PluginInput) => post<{ plugin: Plugin }>('/api/plugins', body).then((r) => r.plugin),
+  updatePlugin: (id: string, body: Partial<PluginInput> & { enabled?: boolean }) =>
+    patch<{ plugin: Plugin }>(`/api/plugins/${id}`, body).then((r) => r.plugin),
+  deletePlugin: (id: string) => del<void>(`/api/plugins/${id}`),
+  importPlugins: (file: File) => {
+    const f = new FormData()
+    f.append('file', file)
+    return postForm<{ created: Plugin[]; skipped: { name: string; reason: string }[] }>('/api/plugins/import', f)
+  },
+
+  conversations: (q = '', before?: string | null) => {
+    const qs = new URLSearchParams({ limit: '50' })
+    if (q) qs.set('q', q.slice(0, 200))
+    if (before) qs.set('before', before)
+    return get<{ items: Conversation[]; next_before: string | null }>(`/api/conversations?${qs}`)
+  },
   createConversation: (body: { title?: string; model?: string }) =>
     post<{ conversation: Conversation }>('/api/conversations', body).then((r) => r.conversation),
   conversation: (id: string) =>
     get<{ conversation: Conversation; messages: Message[] }>(`/api/conversations/${id}`),
-  renameConversation: (id: string, title: string) =>
-    patch<{ conversation: Conversation }>(`/api/conversations/${id}`, { title }).then((r) => r.conversation),
+  patchConversation: (id: string, body: { title?: string; pinned?: boolean }) =>
+    patch<{ conversation: Conversation }>(`/api/conversations/${id}`, body).then((r) => r.conversation),
+  markRead: (id: string) => post<void>(`/api/conversations/${id}/read`),
   deleteConversation: (id: string) => del<void>(`/api/conversations/${id}`),
 
+  deleteFile: (id: string) => del<void>(`/api/files/${id}`),
   stopMessage: (id: string) => post<void>(`/api/messages/${id}/stop`),
 }
 
 export interface SendBody {
   content: string
   attachment_ids: string[]
-  model: string
-  reasoning: Reasoning
+  /** Thinking level id; omitted for models without reasoning. */
+  reasoning?: string
+  /** Only sent when the server reports `switchable`. */
+  model?: string
 }
 
 /** Upload with progress (XHR: fetch has no upload progress). */
+export function buildUploadForm(file: File, conversationId?: string): FormData {
+  const form = new FormData()
+  form.append('file', file)
+  // In an existing chat the server counts the unsent upload in that conversation's context.
+  if (conversationId) form.append('conversation_id', conversationId)
+  return form
+}
+
 export function uploadFile(
   file: File,
   onProgress: (fraction: number) => void,
   signal?: AbortSignal,
+  opts: { conversationId?: string } = {},
 ): Promise<FileMeta> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.open('POST', '/api/files')
     xhr.withCredentials = true
     xhr.responseType = 'text'
+    for (const [k, v] of Object.entries(baseHeaders())) xhr.setRequestHeader(k, v)
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) onProgress(e.loaded / e.total)
     }
@@ -147,8 +198,6 @@ export function uploadFile(
       reject(err)
     }
     signal?.addEventListener('abort', () => xhr.abort())
-    const form = new FormData()
-    form.append('file', file)
-    xhr.send(form)
+    xhr.send(buildUploadForm(file, opts.conversationId))
   })
 }

@@ -36,7 +36,7 @@ export function CollapsibleStep({ testId, icon, title, elapsedMs, running, error
       data-testid={testId}
       data-state={open ? 'open' : 'closed'}
       data-status={running ? 'running' : error ? 'error' : 'done'}
-      className={cn('my-2 rounded-xl border bg-bg', error ? 'border-danger/50' : 'border-line')}
+      className={cn('my-1.5 rounded-xl border bg-bg', error ? 'border-danger/50' : 'border-line')}
     >
       <button
         type="button"
@@ -44,7 +44,7 @@ export function CollapsibleStep({ testId, icon, title, elapsedMs, running, error
         aria-expanded={open}
         aria-controls={bodyId}
         onClick={() => setUserOpen(!open)}
-        className="flex w-full min-w-0 items-center gap-2 rounded-xl px-3 py-2 text-left text-sm hover:bg-hover"
+        className="flex w-full min-w-0 items-center gap-2 rounded-xl px-3 py-1.5 text-left text-[13px] hover:bg-hover"
       >
         <span className={cn('shrink-0', error ? 'text-danger' : 'text-muted')}>{icon}</span>
         <span className="flex min-w-0 flex-1 items-center gap-2 truncate">{title}</span>
@@ -58,7 +58,7 @@ export function CollapsibleStep({ testId, icon, title, elapsedMs, running, error
       </button>
       <div id={bodyId} className="collapse-grid" data-open={open} aria-hidden={!open}>
         <div className="collapse-inner" inert={!open}>
-          {everOpen && <div className="border-t border-line px-3 py-3 text-sm">{children}</div>}
+          {everOpen && <div className="border-t border-line px-3 py-2.5 text-[13px]">{children}</div>}
         </div>
       </div>
     </div>

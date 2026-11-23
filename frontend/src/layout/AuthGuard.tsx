@@ -8,6 +8,7 @@ import { PendingGate } from '@/features/auth/PendingGate'
 import { ME_KEY, useLogout, useMe } from '@/features/auth/useMe'
 import { useRunStore } from '@/features/chat/stores'
 import { Sidebar } from './Sidebar'
+import { Toaster } from '@/components/Toaster'
 
 export function AuthGuard() {
   const { t, err } = useI18n()
@@ -49,6 +50,7 @@ export function AuthGuard() {
       }}
     >
       <Sidebar user={user} />
+      <Toaster />
       <main className="flex min-w-0 flex-1 flex-col">
         <Outlet context={user} />
       </main>

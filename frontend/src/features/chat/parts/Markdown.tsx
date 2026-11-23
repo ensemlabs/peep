@@ -1,7 +1,30 @@
-import { memo } from 'react'
+import { memo, useEffect, useState } from 'react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { CodeBlock } from './CodeBlock'
+import { mightHaveMath, prepareMath } from './math'
+
+type MathMod = typeof import('./mathPlugins')
+let mathPromise: Promise<MathMod> | null = null
+let loadedMath: MathMod | null = null
+const loadMath = () =>
+  (mathPromise ??= import('./mathPlugins').then(
+    (m) => (loadedMath = m),
+    (e) => {
+      mathPromise = null // a failed chunk load must be retryable, not cached forever
+      throw e
+    },
+  ))
+
+/** Loads the math plugins lazily, only once some text needs them. */
+function useMath(needed: boolean): MathMod | null {
+  // Start from the already-loaded module so later messages render math without a flash.
+  const [mod, setMod] = useState<MathMod | null>(loadedMath)
+  useEffect(() => {
+    if (needed && !mod) void loadMath().then(setMod).catch(() => {})
+  }, [needed, mod])
+  return mod
+}
 
 const HEADING = ({ children }: { children?: React.ReactNode }) => <p className="font-semibold">{children}</p>
 
@@ -42,10 +65,12 @@ const STATIC_MUTED = makeComponents(false, true)
 
 /** `muted` is for thinking text: small, subdued, headings flattened to bold lines. */
 export const Markdown = memo(function Markdown({ text, streaming = false, muted = false }: { text: string; streaming?: boolean; muted?: boolean }) {
+  const math = useMath(mightHaveMath(text))
+  const source = math ? prepareMath(text) : text
   return (
     <div className={muted ? 'md md-muted' : 'md'} data-testid="markdown">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml components={muted ? (streaming ? STREAMING_MUTED : STATIC_MUTED) : streaming ? STREAMING : STATIC}>
-        {text}
+      <ReactMarkdown remarkPlugins={math ? [remarkGfm, ...math.remarkMathPlugins] : [remarkGfm]} rehypePlugins={math ? [...math.rehypeMathPlugins] : []} skipHtml components={muted ? (streaming ? STREAMING_MUTED : STATIC_MUTED) : streaming ? STREAMING : STATIC}>
+        {source}
       </ReactMarkdown>
     </div>
   )

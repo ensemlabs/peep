@@ -70,6 +70,8 @@ export function applyEvent(message: Message, event: StreamEvent): Message {
       const parts = mapPart(message.parts, part_id, (p) => ({ ...p, ...patch }) as Part)
       return parts === message.parts ? message : { ...message, parts }
     }
+    case 'usage':
+      return { ...message, usage: event.data.usage }
     case 'done':
       return { ...message, status: event.data.status, error: event.data.error ?? null }
     default:

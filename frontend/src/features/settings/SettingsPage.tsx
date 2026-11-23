@@ -10,6 +10,7 @@ import { validateNewPassword } from '@/features/auth/validation'
 import { useOutletContext } from 'react-router'
 import type { User } from '@/api/types'
 import { ThemeSwitch } from '@/components/ThemeSwitch'
+import { SettingsTabs } from './SettingsTabs'
 import { TopBar } from '@/layout/TopBar'
 
 export function SettingsPage() {
@@ -46,7 +47,8 @@ export function SettingsPage() {
         <h1 className="text-base font-semibold">{t('settings.title')}</h1>
       </TopBar>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-xl space-y-8 px-4 py-8">
+        <SettingsTabs />
+        <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-8">
           <section>
             <h2 className="mb-3 text-sm font-semibold">{t('settings.language')}</h2>
             <select

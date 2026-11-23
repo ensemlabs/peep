@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import type { Message, Reasoning } from '@/api/types'
+import type { Message } from '@/api/types'
+import { loadLevels, saveLevel } from '@/lib/reasoning'
 import { readStorage, writeStorage } from '@/lib/storage'
 
 export interface LiveRun {
@@ -34,23 +35,29 @@ export const useRunStore = create<RunStore>((set, get) => ({
 interface UiStore {
   sidebarOpen: boolean
   setSidebarOpen: (open: boolean) => void
+  /** Desktop: sidebar hidden (persisted). */
+  collapsed: boolean
+  setCollapsed: (c: boolean) => void
   model: string | null
   setModel: (id: string) => void
-  reasoning: Reasoning
-  setReasoning: (r: Reasoning) => void
+  /** Chosen thinking level per model id (persisted). */
+  levels: Record<string, string>
+  setLevel: (modelId: string, level: string) => void
 }
 
 export const useUiStore = create<UiStore>((set) => ({
   sidebarOpen: false,
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
+  collapsed: readStorage('ec_sidebar_collapsed') === '1',
+  setCollapsed: (collapsed) => {
+    writeStorage('ec_sidebar_collapsed', collapsed ? '1' : '0')
+    set({ collapsed })
+  },
   model: readStorage('ec_model'),
   setModel: (model) => {
     writeStorage('ec_model', model)
     set({ model })
   },
-  reasoning: readStorage('ec_reasoning') === 'high' ? 'high' : 'off',
-  setReasoning: (reasoning) => {
-    writeStorage('ec_reasoning', reasoning)
-    set({ reasoning })
-  },
+  levels: loadLevels(),
+  setLevel: (modelId, level) => set((st) => ({ levels: saveLevel(st.levels, modelId, level) })),
 }))

@@ -10,7 +10,7 @@ const T = '2026-01-01T00:00:00Z'
 
 describe('Mascot', () => {
   it.each(['idle', 'thinking', 'working', 'error'] as const)('maps state %s to a class and data-state', (state) => {
-    expect(mascotClass(state, true)).toBe(`mascot mascot--${state}`)
+    expect(mascotClass(state, true)).toBe(`mascot mascot-pip mascot--${state}`)
     render(<Mascot state={state} />)
     const el = screen.getByTestId('mascot')
     expect(el).toHaveAttribute('data-state', state)
@@ -19,11 +19,12 @@ describe('Mascot', () => {
   it('is static when animated=false', () => {
     expect(mascotClass('idle', false)).toContain('mascot--still')
   })
-  it('only shows thought dots while thinking', () => {
-    const { container, rerender } = render(<Mascot state="thinking" />)
-    expect(container.querySelector('.m-dots')).not.toBeNull()
-    rerender(<Mascot state="idle" />)
-    expect(container.querySelector('.m-dots')).toBeNull()
+  it('renders Pip with a unique gradient per instance and the thought dots', () => {
+    const { container } = render(<><Mascot state="thinking" /><Mascot state="idle" /></>)
+    const ids = Array.from(container.querySelectorAll('linearGradient')).map((g) => g.id)
+    expect(new Set(ids).size).toBe(2)
+    expect(container.querySelectorAll('.pip-dots')).toHaveLength(2)
+    expect(container.querySelector('.mascot-pip.mascot--thinking')).not.toBeNull()
   })
 })
 
