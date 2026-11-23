@@ -78,6 +78,15 @@ describe('ThinkingBlock', () => {
     rerender(<ThinkingBlock part={thinking()} live />)
     expect(screen.getByTestId('step-thinking')).toHaveAttribute('data-state', 'open')
   })
+  it('renders markdown in the thinking text (bold, flat headings, no raw HTML)', async () => {
+    renderWithI18n(<ThinkingBlock part={thinking({ text: '**Calculated divisors**\n\n# Big heading\n\n<b>raw</b> text' })} live={false} />)
+    await userEvent.click(screen.getByTestId('step-toggle'))
+    const panel = screen.getByTestId('thinking-text')
+    expect(panel.querySelector('strong')?.textContent).toBe('Calculated divisors')
+    expect(panel.textContent).not.toContain('**')
+    expect(panel.querySelector('h1')).toBeNull()
+    expect(panel.querySelector('b')).toBeNull()
+  })
   it('localises the label in Vietnamese', () => {
     renderWithI18n(<ThinkingBlock part={thinking()} live={false} />, 'vi')
     expect(screen.getByText('Đã suy nghĩ 12 giây')).toBeInTheDocument()

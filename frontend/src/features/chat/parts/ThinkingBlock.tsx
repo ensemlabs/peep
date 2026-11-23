@@ -4,6 +4,7 @@ import { formatDuration } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import type { ThinkingPart } from '@/api/types'
 import { Mascot } from '@/components/Mascot'
+import { Markdown } from './Markdown'
 import { CollapsibleStep } from './CollapsibleStep'
 import { useElapsed } from './useElapsed'
 
@@ -28,9 +29,9 @@ function ThinkingText({ text, running }: { text: string; running: boolean }) {
         running ? 'max-h-48 [mask-image:linear-gradient(to_bottom,transparent,black_1.75rem)]' : 'max-h-[28rem]',
       )}
     >
-      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-muted" data-testid="thinking-text">
-        {text}
-      </p>
+      <div data-testid="thinking-text">
+        <Markdown text={text} streaming={running} muted />
+      </div>
     </div>
   )
 }

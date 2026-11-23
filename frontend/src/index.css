@@ -287,3 +287,20 @@ button:disabled {
   0%, 100% { opacity: 0.25; }
   50% { opacity: 1; }
 }
+
+/* Thinking text: small, muted, flat headings */
+.md.md-muted {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.md.md-muted strong,
+.md.md-muted p.font-semibold {
+  font-weight: 600;
+  color: color-mix(in srgb, var(--muted) 70%, var(--fg));
+}
+.md.md-muted p,
+.md.md-muted ul,
+.md.md-muted ol {
+  margin: 0.5em 0;
+}

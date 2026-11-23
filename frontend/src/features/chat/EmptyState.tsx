@@ -6,8 +6,8 @@ const EXAMPLES: TKey[] = ['chat.example1', 'chat.example2', 'chat.example3', 'ch
 export function EmptyState({ onExample }: { onExample: (text: string) => void }) {
   const t = useT()
   return (
-    <div className="flex flex-col items-center pt-[8vh] text-center" data-testid="empty-state">
-      <Mascot size={88} className="mb-4" />
+    <div className="flex flex-col items-center pt-[3vh] sm:pt-[8vh] text-center" data-testid="empty-state">
+      <Mascot size={88} className="mb-3 max-sm:size-16 max-[420px]:max-h-[18dvh]" />
       <h1 className="text-2xl font-semibold tracking-tight">{t('chat.greeting')}</h1>
       <p className="mt-2 text-sm text-muted">{t('chat.greetingSub')}</p>
       <div className="mt-8 grid w-full max-w-xl gap-2 sm:grid-cols-2">
