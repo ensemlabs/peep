@@ -1,0 +1,30 @@
+# Playwright e2e overlay: used by `make e2e` together with docker-compose.yml (+ docker-compose.gemini.yml).
+services:
+  api:
+    environment:
+      # Raise the per-IP throttles that a whole suite from one IP would trip; the per-account lockout (A3) stays at 5.
+      IP_LOGIN_MAX: "1000"
+      REG_MAX: "1000"
+      LOGIN_MAX_FAILURES: "5"
+      # The browser in the e2e container talks to http://web (keep the .env value, append ours).
+      APP_ORIGINS: "${APP_ORIGINS:-http://localhost:8090,http://127.0.0.1:8090},http://web"
+
+  e2e:
+    profiles: [e2e]
+    image: mcr.microsoft.com/playwright:v1.65.0-noble
+    init: true
+    ipc: host
+    working_dir: /e2e
+    user: "${E2E_UID:-1000}:${E2E_GID:-1000}"
+    volumes:
+      - ./e2e:/e2e
+    environment:
+      HOME: /tmp
+      BASE_URL: http://web
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?set in .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set in .env}
+    depends_on:
+      - web
+    networks: [backend]
+    # Extra args (make e2e ARGS="--grep @gemini") arrive as "$@".
+    entrypoint: ["sh", "-c", "npm ci --no-audit --no-fund && exec npx playwright test \"$$@\"", "--"]
