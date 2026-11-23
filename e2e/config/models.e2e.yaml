@@ -1,0 +1,23 @@
+# Model registry used by the e2e stack (mounted into the api by docker-compose.e2e.yml). No secrets here.
+# Real Gemini through the llm-proxy dev proxy; the model switcher is on so tests can also pick replay:* models.
+active: gemini-pro
+dev:
+  model_switcher: true
+providers:
+  - id: llm-proxy
+    base_url: http://llm-proxy-ts:8000/v1
+    api_key_env: LLM_API_KEY
+    usage: estimate
+    models:
+      - id: gemini-pro
+        label: Gemini Pro
+        vision: true
+        context_window: 1000000
+        image_tokens: 258
+        thinking:
+          default: off
+          returns_text: true
+          read_from: {delta_fields: [reasoning_content, reasoning]}
+          levels:
+            - {id: off,  label: {en: Off,  vi: Tắt}, patch: {}}
+            - {id: high, label: {en: High, vi: Cao}, patch: {reasoning_effort: high}}

@@ -34,6 +34,8 @@ export function uniqueEmail(): string {
 
 export interface ConsoleWatch {
   errors: string[]
+  /** Patterns of console errors that the test provokes on purpose (e.g. the browser's log of an expected 422). */
+  allowed: RegExp[]
   assertClean(): void
 }
 
@@ -43,11 +45,20 @@ function isExpected(text: string, url: string): boolean {
   return hay.includes('/api/auth/me') && /401|access control/i.test(hay)
 }
 
+const watches = new WeakMap<Page, ConsoleWatch>()
+
+/** Declares that this test deliberately triggers console errors matching `pattern` (checked against text + URL). */
+export function allowConsoleError(page: Page, pattern: RegExp) {
+  watches.get(page)?.allowed.push(pattern)
+}
+
 export function watchConsole(page: Page): ConsoleWatch {
   const errors: string[] = []
+  const allowed: RegExp[] = []
   page.on('console', (m) => {
     if (m.type() !== 'error') return
     if (isExpected(m.text(), m.location().url)) return
+    if (allowed.some((re) => re.test(`${m.text()} ${m.location().url}`))) return
     errors.push(`console.error: ${m.text()} (${m.location().url})`)
   })
   page.on('pageerror', (e) => {
@@ -55,12 +66,15 @@ export function watchConsole(page: Page): ConsoleWatch {
     if (isExpected(msg, '')) return
     errors.push(`pageerror: ${msg}`)
   })
-  return {
+  const watch: ConsoleWatch = {
     errors,
+    allowed,
     assertClean() {
       expect(errors, 'unexpected console errors / page errors (incl. CSP violations)').toEqual([])
     },
   }
+  watches.set(page, watch)
+  return watch
 }
 
 export async function noHorizontalScroll(page: Page) {
@@ -178,11 +192,15 @@ export async function selectModel(page: Page, id: string) {
   await page.getByTestId(`model-option-${id}`).click()
 }
 
-export async function setThinking(page: Page, level: 'high' | 'off') {
-  const toggle = page.getByTestId('thinking-toggle')
-  await expect(toggle).toBeEnabled()
-  if ((await toggle.getAttribute('data-state')) !== level) await toggle.click()
-  await expect(toggle).toHaveAttribute('data-state', level)
+/** Picks a thinking level in the composer's "reasoning-level" dropdown (model must support levels). */
+export async function setThinking(page: Page, level: string) {
+  const trigger = page.getByTestId('reasoning-level')
+  await expect(trigger).toBeVisible()
+  if ((await trigger.getAttribute('data-value')) !== level) {
+    await trigger.click()
+    await page.locator(`[data-testid="reasoning-option"][data-value="${level}"]`).click()
+  }
+  await expect(trigger).toHaveAttribute('data-value', level)
 }
 
 export async function sendPrompt(page: Page, text: string) {
@@ -196,6 +214,9 @@ export function conversationIdFrom(page: Page): string {
   if (!m) throw new Error(`not on a conversation page: ${page.url()}`)
   return m[1]
 }
+
+export const GEMINI_MODEL = 'gemini-pro'
+export const ERROR_MODEL = 'replay:error-demo'
 
 export const lastAssistant = (page: Page): Locator => page.getByTestId('message-assistant').last()
 

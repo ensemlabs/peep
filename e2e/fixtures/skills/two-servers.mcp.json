@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "e2e-docs": {
+      "type": "http",
+      "url": "https://mcp.example.com/docs",
+      "headers": {
+        "Authorization": "Bearer import-secret-456"
+      }
+    },
+    "e2e-search": {
+      "type": "sse",
+      "url": "https://mcp.example.com/sse"
+    }
+  }
+}

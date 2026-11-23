@@ -32,9 +32,17 @@ test('A5 @gemini: live thinking block, collapse to "Thought for Ns", toggle, pyt
   await sendPrompt(page, PROMPT)
   const msg = lastAssistant(page)
   await expect(msg).toBeVisible()
+
+  // The Claude-Code-style status line is shown while streaming, with an animated Pip.
+  const status = page.getByTestId('run-status')
+  await expect(status).toBeVisible()
+  const mascot = status.getByTestId('mascot')
+  await expect(mascot).toBeVisible()
+  expect(await mascot.locator('.pip-float').evaluate((el) => getComputedStyle(el).animationName), 'Pip animation').not.toBe('none')
   await expect(msg).toHaveAttribute('data-status', /complete|error|stopped/, { timeout: GEMINI_TIMEOUT - 30_000 })
   await expect(msg, 'Gemini run did not complete (refusal / upstream error?)').toHaveAttribute('data-status', 'complete')
 
+  await expect(page.getByTestId('run-status'), 'run-status disappears when done').toHaveCount(0)
   const step = msg.getByTestId('step-thinking')
   expect(await step.count(), 'Gemini produced no thinking part on this run (retry should cover it)').toBeGreaterThan(0)
   const live = await page.evaluate(() => (window as unknown as { __live: { text: number } | null }).__live)

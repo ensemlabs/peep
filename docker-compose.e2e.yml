@@ -8,6 +8,11 @@ services:
       LOGIN_MAX_FAILURES: "5"
       # The browser in the e2e container talks to http://web (keep the .env value, append ours).
       APP_ORIGINS: "${APP_ORIGINS:-http://localhost:8090,http://127.0.0.1:8090},http://web"
+      # Real Gemini (dev proxy) + model switcher + replay:* models.
+      MODELS_CONFIG: /app/config-e2e/models.e2e.yaml
+      REPLAY_ENABLED: "true"
+    volumes:
+      - ./e2e/config:/app/config-e2e:ro
 
   e2e:
     profiles: [e2e]

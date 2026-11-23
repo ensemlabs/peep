@@ -52,6 +52,6 @@ test('A9: reload mid-stream resumes and completes; reload after done restores ev
   await expect(lastAssistant(page).getByTestId('step-thinking')).toHaveCount(1)
   expect(await topLevelCounts(page)).toEqual(afterResume)
   expect(await partTypeCounts(page)).toEqual(stored)
-  await expect(page.getByTestId('conversation-item').filter({ hasText: prompt })).toHaveCount(1)
+  await expect(page.getByTestId('conv-row').filter({ hasText: prompt })).toHaveCount(1)
   await expect(page.getByTestId('message-user').last()).toContainText(prompt)
 })
