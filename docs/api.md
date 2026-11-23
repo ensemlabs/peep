@@ -43,11 +43,13 @@ Files and conversations belong to one user. Another user's id gives 404 `not_fou
 | PATCH | `/api/admin/users/{id}` | admin | 200 `{user}` |
 | POST | `/api/admin/users/{id}/password` | admin | 204 |
 | DELETE | `/api/admin/users/{id}` | admin | 204 |
-| GET | `/api/models` | active | 200 `{items, default}` |
-| GET | `/api/conversations` | active | 200 `{items}` |
+| GET | `/api/models` | active | 200 `{switchable, active, items}` |
+| GET | `/api/context` | active | 200 context usage |
+| GET | `/api/conversations` | active | 200 `{items, next_before}` |
 | POST | `/api/conversations` | active | 201 `{conversation}` |
 | GET | `/api/conversations/{id}` | active | 200 `{conversation, messages}` |
 | PATCH | `/api/conversations/{id}` | active | 200 `{conversation}` |
+| POST | `/api/conversations/{id}/read` | active | 204 |
 | DELETE | `/api/conversations/{id}` | active | 204 |
 | POST | `/api/conversations/{id}/messages` | active | SSE stream |
 | GET | `/api/messages/{id}/events` | active | SSE stream |
@@ -55,6 +57,17 @@ Files and conversations belong to one user. Another user's id gives 404 `not_fou
 | POST | `/api/files` | active | 201 `{file: FileMeta}` |
 | GET | `/api/files/{id}/content` | active | 200, 206, 304, 416 |
 | GET | `/api/files/{id}/thumb` | active | 200 (webp) |
+| DELETE | `/api/files/{id}` | active | 204; 409 `file_in_use` |
+| GET | `/api/skills` | active | 200 `{items: [Skill]}` |
+| POST | `/api/skills` | active | 201 `{skill}` |
+| GET | `/api/skills/{id}` | active | 200 `{skill, files, skill_md}` |
+| PATCH | `/api/skills/{id}` | active | 200 `{skill}` |
+| DELETE | `/api/skills/{id}` | active | 204 |
+| GET | `/api/plugins` | active | 200 `{items: [Plugin]}` |
+| POST | `/api/plugins` | active | 201 `{plugin}` |
+| POST | `/api/plugins/import` | active | 200 `{created, skipped}` |
+| PATCH | `/api/plugins/{id}` | active | 200 `{plugin}` |
+| DELETE | `/api/plugins/{id}` | active | 204 |
 
 ### Objects
 
@@ -65,11 +78,38 @@ Files and conversations belong to one user. Another user's id gives 404 `not_fou
  "status": "pending|active|disabled", "created_at": "...", "last_login_at": "...|null", "approved_at": "...|null"}
 ```
 
-**Conversation** (full form): `{id, title, model, created_at, updated_at}`. The list returns only
-`{id, title, model, updated_at}`. `title` is `""` until the first message. `model` can be `null`.
+**Conversation** (full form): `{id, title, model, created_at, updated_at, pinned}`. `title` is `""` until the first
+message. `model` can be `null`. The list returns a different shape, see [GET /api/conversations](#get-apiconversations).
 
-**Model**: `{id, label, provider: "openai"|"replay", reasoning: bool}`. `reasoning` is `true` for `openai` models and
-`false` for `replay` models.
+**ModelInfo**
+
+| Field | Type | Meaning |
+| :--- | :--- | :--- |
+| `id` | string | Model id (`replay:<name>` for demo models) |
+| `label` | string | Display name, in the language of the request's `Accept-Language` header (`vi...` gives Vietnamese, otherwise English) |
+| `provider` | string | Provider id from the models file; `replay` for demo models |
+| `vision` | boolean | Accepts images |
+| `context_window` | integer | Tokens |
+| `image_tokens` | integer \| null | Estimated tokens per image; `null` when `vision` is false |
+| `reasoning` | object \| null | `null` when the model has no thinking levels. Otherwise `{levels: [{id, label}], default, returns_text}` |
+
+**Usage**
+
+| Field | Type | Meaning |
+| :--- | :--- | :--- |
+| `input_tokens` | integer | Prompt tokens |
+| `output_tokens` | integer | Completion tokens (include reasoning tokens) |
+| `reasoning_tokens` | integer \| null | Part of the output spent on reasoning, when known |
+| `cache_read_tokens` | integer \| null | Prompt tokens served from the provider's cache |
+| `cache_write_tokens` | integer \| null | Prompt tokens written to the cache |
+| `total_tokens` | integer | `input_tokens + output_tokens` |
+| `source` | `provider` \| `estimate` | `provider`: normalised from the provider's `usage`. `estimate`: counted with tiktoken |
+
+Provider usage is read from `prompt_tokens`/`completion_tokens` (or `input_tokens`/`output_tokens`),
+`completion_tokens_details.reasoning_tokens`, and for the cache from `prompt_tokens_details.cached_tokens`,
+`prompt_cache_hit_tokens` or `cache_read_input_tokens` (read) and `cache_creation_input_tokens` (write). Fields the
+provider does not send are `null`. An estimate never has cache fields. If a provider is set to `usage: estimate`, or
+returns no usable usage, the estimate is used.
 
 **FileMeta**
 
@@ -96,6 +136,7 @@ Files and conversations belong to one user. Another user's id gives 404 `not_fou
 | `parts` | Part[] | Part tree of an assistant message (empty for user messages) |
 | `status` | `streaming` \| `complete` \| `error` \| `stopped` | |
 | `model` | string \| null | Model that answered (assistant messages) |
+| `usage` | Usage \| null | Token usage of the reply. `null` for user messages, while streaming, and for runs that failed or were stopped |
 | `error` | string \| null | Error text when `status = error` |
 | `created_at` | string | |
 
@@ -217,29 +258,50 @@ Body `{new_password}`. 204. Revokes all sessions of that user. Errors: 400 `cann
 
 ### GET /api/models
 
+Send `Accept-Language` so that labels come in the user's language.
+
 ```json
-{"items": [{"id": "gemini-pro", "label": "Gemini Pro", "provider": "openai", "reasoning": true},
-           {"id": "replay:agent-demo", "label": "Replay · Agent demo", "provider": "replay", "reasoning": false}],
- "default": "gemini-pro"}
+{"switchable": false,
+ "active": {"id": "my-model", "label": "My Model", "provider": "my-provider", "vision": true,
+            "context_window": 128000, "image_tokens": 765,
+            "reasoning": {"levels": [{"id": "off", "label": "Off"}, {"id": "high", "label": "High"}],
+                          "default": "off", "returns_text": true}},
+ "items": ["same as active"]}
 ```
 
-- `openai` models come from the endpoint's `/models`, filtered by `LLM_MODELS` (order of `LLM_MODELS` kept; all
-  upstream models when it is empty). The result is cached for 60 seconds. If the endpoint cannot be reached, the
-  `LLM_MODELS` list is used (and retried after about 10 seconds). If nothing matches, `LLM_MODELS` is used as is.
-- `replay` models, one per file in `backend/app/replay/fixtures/`, are added when `REPLAY_ENABLED=true`.
-- `default` is `LLM_DEFAULT_MODEL` when it is in the list, else the first item, else `null`.
+- `active` is the `active` model of `config/models.yaml` (or of the `LLM_*` fallback).
+- `switchable` is `dev.model_switcher`. When it is `false`, `items` holds only `active`. When it is `true`, `items`
+  holds every configured model plus the `replay:*` demo models (when `REPLAY_ENABLED=true`).
+- Replay models have `provider: "replay"`, `vision: false`, `reasoning: null` and a 128000-token context window.
 
 ## Conversations
 
 ### GET /api/conversations
 
-Query: `limit` (1-100, default 50), `before` (datetime; returns conversations with `updated_at` before it). Sorted by
-`updated_at` descending. Returns `{items: [{id, title, model, updated_at}]}`.
+Query: `limit` (1-100, default 50), `q` (search, at most 200 characters), `before` (cursor, at most 64 characters).
+
+Returns `{items, next_before}`. Each item:
+
+| Field | Type | Meaning |
+| :--- | :--- | :--- |
+| `id`, `title`, `model` | | As in Conversation |
+| `updated_at` | string | |
+| `status` | `idle` \| `streaming` \| `complete` \| `error` \| `stopped` | Status of the last assistant message; `idle` when there is none |
+| `unread` | boolean | The last assistant message finished (`complete`, `error` or `stopped`) after the conversation's last read time (see `POST .../read`). Conversations that existed before the update count as read |
+| `preview` | string | Up to 100 characters of the last assistant text (or, if none, the last message text), with markdown removed |
+| `pinned` | boolean | |
+
+- Order: pinned conversations first, then `updated_at` descending.
+- `q` matches the title and the text of any message, case-insensitively (substring).
+- Paging: `next_before` is `null` on the last page. Otherwise pass it as `before` to get the next page. Treat it as
+  an opaque token (it currently looks like `0~<ISO time>`). A bare ISO 8601 timestamp is still accepted and means
+  "unpinned conversations with `updated_at` before this time". A value that is neither gives 422 `invalid_request`.
 
 ### POST /api/conversations
 
-Body `{title?, model?}` (`title` at most 200 characters). `model` must be in `/api/models`, otherwise 422
-`invalid_model`; without it the default model is used. Returns 201 `{conversation}`.
+Body `{title?, model?}` (`title` at most 200 characters). Without `dev.model_switcher`, `model` is ignored and the
+active model is stored. With it, `model` must be one of `/api/models` `items`, otherwise 422 `invalid_model`.
+Returns 201 `{conversation}`.
 
 ### GET /api/conversations/{id}
 
@@ -247,7 +309,13 @@ Returns `{conversation, messages: [Message]}`, oldest first (user message before
 
 ### PATCH /api/conversations/{id}
 
-Body `{title}` (at most 200 characters, not blank, else 422 `invalid_request`). Returns `{conversation}`.
+Body `{title?, pinned?}`. `title`: at most 200 characters, not blank. At least one field is required, otherwise 422
+`invalid_request`. Returns `{conversation}`.
+
+### POST /api/conversations/{id}/read
+
+204. Sets the conversation's last read time to now, which clears `unread`. The web app calls it when you open a
+conversation and when a reply finishes while it is open.
 
 ### DELETE /api/conversations/{id}
 
@@ -264,8 +332,16 @@ Body:
 | :--- | :--- | :--- | :--- |
 | `content` | string | `""` | At most 100000 characters |
 | `attachment_ids` | UUID[] | `[]` | At most 32 files uploaded with `POST /api/files`. Duplicates are dropped. |
-| `model` | string | the conversation's model, then `LLM_DEFAULT_MODEL` | Must be in `/api/models` |
-| `reasoning` | `off` \| `high` | `off` | `high` asks the model for extended thinking. Ignored (treated as `off`) for `replay:*`. |
+| `model` | string | the active model | Only honoured with `dev.model_switcher` (then it must be one of `/api/models` `items`, default: the conversation's model, then the active one). Otherwise ignored |
+| `reasoning` | string | the model's default level | Thinking level id from the model's `reasoning.levels` (at most 32 characters) |
+
+`reasoning` semantics:
+
+- Omitted or `null`: the model's `reasoning.default` level.
+- A model without thinking levels (`reasoning: null`, including every `replay:*` model) ignores the field, whatever its value.
+- A model with levels and an id that is not one of them: 422 `invalid_reasoning_level`. The old values `off` and
+  `high` are only accepted when the model has levels with those ids.
+- The level's `patch` from the models file is merged into the provider request.
 
 Effects: stores the user message and an empty assistant message (`status: streaming`), attaches the files, sets the
 conversation title (first 60 characters of the text with whitespace collapsed, or the first attachment's file name)
@@ -276,11 +352,13 @@ if it has none, stores the model on the conversation, and starts the run. The re
 | :--- | :--- | :--- |
 | 200 | | SSE stream |
 | 404 | `not_found` | Not your conversation |
+| 409 | `file_in_use` | The file is attached to a message (or generated) and cannot be deleted |
 | 409 | `run_in_progress` | This conversation already has a running reply |
 | 422 | `empty_message` | No text (after trimming) and no attachment |
-| 422 | `invalid_model` | Unknown model |
+| 422 | `invalid_model` | Unknown model (only with `dev.model_switcher`) |
+| 422 | `invalid_reasoning_level` | The model has no such thinking level |
 | 422 | `invalid_attachment` | A file id is not yours, already attached to a message, or belongs to another conversation |
-| 422 | `invalid_request` | Body fails validation (for example `reasoning` not `off`/`high`, content too long) |
+| 422 | `invalid_request` | Body fails validation (for example content too long, `reasoning` longer than 32 characters) |
 
 ### GET /api/messages/{id}/events
 
@@ -312,6 +390,7 @@ The server sends a `: ping` comment line after 15 seconds without events, to kee
 | `part` | `{message_id, parent_id, part}` | A part was created. `parent_id` is `null` for a root part, or the id of the `subagent` that contains it. `part` is the complete part. |
 | `delta` | `{message_id, part_id, field, text}` | Text appended to `part[field]`. `field` is `text` (thinking, text) or `output` (tool). |
 | `update` | `{message_id, part_id, patch}` | Fields merged into the part, for example `{"status": "done"}` or `{"status": "done", "files": [FileMeta]}`. |
+| `usage` | `{message_id, usage}` | Token usage of the reply (a Usage object), sent once after the model finished successfully and before `done`. Not sent when the run fails or is stopped. |
 | `done` | `{message_id, status, error?}` | Last event. `status` is `complete`, `error` or `stopped`; `error` holds the text on failure. |
 
 Clients build the message by applying events in order (the web app does this in
@@ -340,6 +419,121 @@ data: {"message_id":"A1","part_id":"t1","patch":{"status":"done","ended_at":"...
 event: done
 data: {"message_id":"A1","status":"complete"}
 ```
+
+## Context
+
+### GET /api/context
+
+Query: `conversation_id` (optional; without it the numbers are for a new chat). 404 `not_found` when it is not yours.
+Returns what the next request in the conversation would send:
+
+| Field | Type | Meaning |
+| :--- | :--- | :--- |
+| `model_id` | string | The model that would answer (the active model, or the conversation's model with `dev.model_switcher`) |
+| `context_window` | integer | Tokens |
+| `used_tokens` | integer | Tokens in use, see below |
+| `free_tokens` | integer | `max(0, context_window - used_tokens)` |
+| `estimated` | boolean | `true` when `used_tokens` is a tiktoken estimate, `false` when it comes from the provider |
+| `breakdown` | array | Always six entries in this order, `{key, tokens, items?}`: `system`, `user_messages`, `assistant_messages`, `attachments`, `tool_results`, `skills` |
+| `last_usage` | Usage \| null | Usage of the latest assistant message that has one |
+| `totals` | object | `{input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, messages}`: sums over the conversation's assistant messages that have usage (`messages` counts them; missing values count as 0) |
+
+- The breakdown is always a tiktoken estimate (`o200k_base`, times the model's `token_ratio`) of the same turns the
+  chat sends: earlier messages as text (thinking and tool output are not resent), plus the pending draft
+  attachments. `system`, `tool_results` and `skills` are always 0 for now.
+- `attachments.items` lists `{name, tokens}`: each image counts the model's `image_tokens`, each other file the text
+  line sent in its place.
+- Draft attachments are files you uploaded but have not sent yet, from the last 24 hours. With `conversation_id`
+  only uploads made for that conversation count; without it, only uploads that have no conversation. They count in
+  `attachments`. `DELETE /api/files/{id}` removes a draft.
+- `used_tokens` is the sum of the breakdown, except when the last message of the conversation is an assistant message
+  whose usage has `source: "provider"` and there are no draft attachments. Then `used_tokens = input_tokens +
+  output_tokens - reasoning_tokens` of that usage (the provider's real count; reasoning is not resent) and `estimated`
+  is `false`. In that case `used_tokens` can differ from the sum of the breakdown.
+
+## Skills
+
+Per user. Stored in S3 (`u/<user id>/skills/<skill id>/...`) and the database. Nothing is executed and the chat does
+not use skills yet.
+
+**Skill**: `{id, name, description, version, enabled, size, file_count, created_at, updated_at}` (`version` is a string
+or `null`; `size` is the unpacked size in bytes).
+
+### POST /api/skills
+
+`multipart/form-data` with a `file` part: a `SKILL.md` (`.md`) or a `.zip`. Query `replace=true` overwrites a skill with
+the same name (it keeps its `enabled` state). Returns 201 `{skill}`.
+
+- `SKILL.md` (at the archive root, or inside the single top folder of a zip) must be UTF-8, at most 1 MB, and start
+  with YAML frontmatter delimited by `---`: `name` (1-64 characters of `a-z`, `0-9`, `-`; unique per user),
+  `description` (1-1024 characters), and optionally `version` (string or number).
+- Limits: upload at most 5 MB; unpacked at most 20 MB; at most 200 files. Rejected: absolute paths, `..`, backslashes,
+  symbolic links, encrypted or duplicate entries, other extensions than `.md` and `.zip`.
+
+| Status | `code` | When |
+| :--- | :--- | :--- |
+| 422 | `invalid_skill` | Any of the rules above is broken (the `message` says which) |
+| 409 | `skill_exists` | The name exists and `replace` is not `true` |
+| 413 | `file_too_large` | Upload over 5 MB |
+
+### GET /api/skills, GET /api/skills/{id}
+
+The list is sorted by name. The detail returns `{skill, files: [{path, size}], skill_md}` (`skill_md` is the text of
+`SKILL.md`).
+
+### PATCH /api/skills/{id}
+
+Body `{enabled}` (boolean). Returns `{skill}`.
+
+### DELETE /api/skills/{id}
+
+204. Deletes the stored files too. Another user's skill gives 404 `not_found`.
+
+## Plugins
+
+Per user. Registrations of MCP servers. They are **only stored**: the API never connects to the URL, and the chat does
+not use them yet.
+
+**Plugin**: `{id, name, description, transport, url, headers, enabled, created_at, updated_at}`.
+`transport` is `http` or `sse`. `headers` is `[{name, value_masked}]`; the value is always the mask `••••••••`. The real
+values are encrypted with Fernet (`SECRETS_KEY`) and never returned.
+
+### POST /api/plugins
+
+Body `{name, description?, transport, url, headers?: [{name, value}]}`. Returns 201 `{plugin}`.
+
+- `name`: 1-64 characters of letters, digits, space, `_`, `-`; unique per user, case-insensitively.
+- `description`: up to 500 characters (longer is cut).
+- `url`: `http` or `https`, at most 2048 characters, no whitespace, no credentials in the URL (use a header).
+- `headers`: at most 20. `name` is an HTTP token (at most 64 characters), unique case-insensitively. `value` is at
+  most 4096 characters, without control characters.
+- At most 100 plugins per user.
+
+| Status | `code` | When |
+| :--- | :--- | :--- |
+| 422 | `invalid_plugin` | A rule above is broken |
+| 422 | `too_many_plugins` | 100 plugins already |
+| 409 | `plugin_exists` | The name is taken |
+| 503 | `secrets_not_configured` | There are header values to store but `SECRETS_KEY` is not set or invalid |
+
+### PATCH /api/plugins/{id}
+
+Any of `name`, `description`, `transport`, `url`, `headers`, `enabled`. Omitted fields are kept. `headers`, when
+sent, replaces the whole list; an entry with `value: null` keeps the stored value of the header with the same name
+(422 `invalid_plugin` if there is none). Same errors as POST, plus 409 `plugin_exists` on rename.
+
+### DELETE /api/plugins/{id}
+
+204.
+
+### POST /api/plugins/import
+
+`multipart/form-data` with a `file` part: a `.mcp.json` (`{"mcpServers": {"name": {"url": ..., "type": "http|sse",
+"headers": {...}}}}`), at most 1 MB and 50 servers. Returns `{created: [Plugin], skipped: [{name, reason}]}`.
+Entries without a `url` (stdio servers), with a name that already exists, that are invalid, or beyond the 100-plugin
+limit are skipped. A `type` or `transport` of `sse` gives `sse`, anything else `http`. Names are cleaned to the
+allowed characters. A file that is not JSON or has no `mcpServers` object gives 422 `invalid_plugin`; a missing
+`SECRETS_KEY` with headers present gives 503 `secrets_not_configured`.
 
 ## Files
 
@@ -391,6 +585,13 @@ and for partial responses `Content-Range`.
 WebP thumbnail (`Content-Disposition: inline`, ETag `"<sha256>-thumb"`, same security headers). 404 `not_found`
 when the file is not an image or has no thumbnail.
 
+### DELETE /api/files/{id}
+
+Removes an upload the user has not sent yet (for example when they drop an attachment chip). Returns 204; the
+database row is deleted first, then the object and thumbnail from storage (best effort). 404 `not_found` for another
+user's file. 409 `file_in_use` once the file is attached to a message or was generated by a run: those files stay.
+A deleted draft no longer counts in `GET /api/context`.
+
 ## Error codes
 
 | HTTP | `code` | Meaning |
@@ -408,7 +609,9 @@ when the file is not an image or has no thumbnail.
 | 405 | `method_not_allowed` | |
 | 409 | `email_taken` | Email already registered |
 | 409 | `run_in_progress` | A reply is being generated in this conversation |
-| 413 | `file_too_large` | Upload over `MAX_UPLOAD_MB` |
+| 409 | `skill_exists` | A skill with this name exists (use `replace=true`) |
+| 409 | `plugin_exists` | A plugin with this name exists |
+| 413 | `file_too_large` | Upload over `MAX_UPLOAD_MB` (skill upload over 5 MB, plugin import over 1 MB) |
 | 415 | `unsupported_type` | Upload without a file name |
 | 422 | `invalid_request` | Validation failure; `message` lists `field: problem` |
 | 422 | `invalid_email` | Bad email address |
@@ -416,10 +619,15 @@ when the file is not an image or has no thumbnail.
 | 422 | `weak_password` | Password not 10-128 characters, or equal to the email |
 | 422 | `invalid_model` | Model not available |
 | 422 | `empty_message` | Message without text or attachment |
+| 422 | `invalid_reasoning_level` | The model has no such thinking level |
 | 422 | `invalid_attachment` | Attachment not usable |
+| 422 | `invalid_skill` | Skill upload rejected |
+| 422 | `invalid_plugin` | Plugin or `.mcp.json` rejected |
+| 422 | `too_many_plugins` | Plugin limit (100) reached |
 | 422 | `empty_file` | Zero-byte upload |
 | 429 | `too_many_attempts` | Throttled; has `Retry-After` |
 | 500 | `internal_error` | Unhandled error (details only in the server log) |
+| 503 | `secrets_not_configured` | `SECRETS_KEY` is not set or invalid and a plugin header must be stored |
 | 503 | `unhealthy` | `/api/health` and the database is down |
 
 Other HTTP statuses map to `http_error`.

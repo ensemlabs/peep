@@ -6,42 +6,70 @@
 
 <p align="center">Built by Ensemble Labs.</p>
 
-<p align="center"><img src="docs/images/chat-agent-demo.png" alt="Chat with the replay:agent-demo model: thinking block, markdown, tool card" width="820"></p>
+<p align="center"><img src="docs/images/chat-agent-demo.png" alt="Desktop chat with a demo agent run: thinking block, markdown, tool cards, conversation sidebar" width="820"></p>
 
 ## Overview
 
-`ensemble-chat` is a ChatGPT/Claude-style web app for any OpenAI-compatible chat API. It was built to run against
-[llm-proxy](../llm-proxy) and to render the whole stream of an agent run, not only the final text.
+`ensemble-chat` is a ChatGPT/Claude-style web app for any OpenAI-compatible chat API (OpenAI, Gemini, DeepSeek,
+Anthropic compat, OpenRouter, vLLM, Ollama, and others). It renders the whole stream of an agent run, not only the
+final text.
 Conversations, uploads and users are stored in Postgres and MinIO. It is a UI only: there is no agent logic and no
 tool execution. Tool and sub-agent cards come from recorded demo streams (`replay:*` models), so the UI can be
 built and tested before a real agent is plugged in (see [docs/api.md](docs/api.md#replay-fixtures)).
 
 ## Features
 
-- **Live thinking panel:** the model's reasoning streams into an open panel inside the chat, with the mascot and a
+- **Live thinking panel:** the model's reasoning streams into an open panel inside the chat, with Pip and a
   timer. When it ends it collapses to "Thought for Ns".
+- **Thinking levels per model:** each model in `config/models.yaml` declares its own levels (for example Off, Low,
+  High, Max). The Thinking selector in the composer shows exactly those. A model with one level shows an
+  "always on" label, and a model without levels shows no selector.
+- **Run status line:** while a reply is generated, a status line under it shows Pip, a changing verb, an elapsed
+  timer and the token count. Press the Stop button, or Esc while the focus is in the message box, to cancel (Esc in
+  other text fields, dialogs and menus does not stop it).
+- **Context ring:** a ring next to the send button shows how much of the model's context window the conversation
+  uses (it changes colour above 70% and 90%). Hover, click or tap for a breakdown (system, your messages, replies,
+  attachments, tool results, skills, free), the last response (input, output, reasoning, cache read, cache write)
+  and conversation totals. Numbers are marked "estimated" (tiktoken) or "from provider" when the provider reports
+  real usage.
 - **Tool and sub-agent cards:** name, input, output, status and run time. Sub-agents nest, and their steps can
   contain tools and text.
-- **Markdown and code:** GitHub-flavoured markdown (raw HTML is not rendered), syntax highlighting, language
-  label, Copy and wrap buttons.
+- **Markdown, code and math:** GitHub-flavoured markdown (raw HTML is not rendered), syntax highlighting, language
+  label, Copy and wrap buttons, and LaTeX math rendered with KaTeX.
 - **Media:** image gallery with a zoom lightbox (next/previous, thumbnails), video with seeking, audio player,
   and a download button on everything.
 - **Uploads:** attach images, video, audio and any file (button, drag and drop, paste). Files are stored in MinIO,
   images are sent to the model, text files open in a code preview.
+- **Conversation list:** each conversation shows its state (running spinner, unread dot when a reply finished
+  while you were elsewhere, red dot on error), a one-line preview, search over titles and message text, and pinning.
+  Groups: Pinned, Today, Previous 7 days, Previous 30 days, Older.
+- **Plugins & Skills:** Settings has a "Plugins & Skills" tab where each user uploads skills (`SKILL.md` or a zip)
+  and registers MCP servers (URL, transport, headers; `.mcp.json` import). They are stored for a future agent
+  backend and are **not used by the chat yet**.
 - **Accounts:** email and password sign-up. New accounts are `pending` until an admin approves them on the admin
   page (search, approve, disable, change role, reset password, delete).
-- **Languages and themes:** Vietnamese and English with a switch, light and dark theme that follow the system.
+- **Languages and themes:** Vietnamese and English with a switch; light, dark or system theme.
 - **Responsive:** phone to desktop. The sidebar becomes a drawer below 768 px.
-- **Mascot:** an octopus that animates while the assistant works (idle, thinking, working, error).
+- **Branding:** the Ensemble logo (theme-aware SVG) in the sidebar, the login page and the favicon. Pip, a teal robot
+  with a lightbulb antenna, is the assistant's avatar and animates while the assistant works (idle, thinking,
+  working, error).
 - **Reconnect and stop:** a reply keeps running if you close the tab. Reload the page and the stream resumes.
   A Stop button cancels it.
 
 <p align="center">
-  <img src="docs/images/gallery-lightbox.png" alt="Gallery lightbox" width="440">
-  <img src="docs/images/mobile-chat.png" alt="Mobile view" width="190">
+  <img src="docs/images/chat-dark.png" alt="Dark theme: Pip and the run-status line while the assistant is thinking" width="520">
+  <img src="docs/images/mobile-chat.png" alt="Phone layout with the run-status line" width="190">
 </p>
 
-<p align="center"><img src="docs/images/mascot-states.png" alt="Mascot states: idle, thinking, working, error" width="340"></p>
+<p align="center">
+  <img src="docs/images/context-ring.png" alt="Context ring popover: breakdown, last response, conversation totals" width="400">
+  <img src="docs/images/gallery-lightbox.png" alt="Image gallery lightbox with zoom and thumbnails" width="400">
+</p>
+
+<p align="center">
+  <img src="docs/images/integrations.png" alt="Settings, Plugins and Skills tab" width="400">
+  <img src="docs/images/math.png" alt="Math rendered with KaTeX in an answer" width="400">
+</p>
 
 ## Architecture
 
@@ -53,22 +81,25 @@ web  (nginx: serves the SPA, proxies /api/ to api:8000)
 api  (FastAPI, one uvicorn worker)
    |-- postgres  (users, sessions, conversations, messages, file metadata, login throttle)
    |-- minio     (uploaded and generated files, S3 API)
-   '-- LLM       (OpenAI-compatible /v1, e.g. llm-proxy)
+   '-- LLM       (any OpenAI-compatible /v1 endpoint, set in config/models.yaml)
 ```
 
 Details, request flow and startup tasks: [docs/architecture.md](docs/architecture.md). HTTP and SSE contract:
-[docs/api.md](docs/api.md). What llm-proxy does not support and how the app copes:
-[docs/llm-proxy-gaps.md](docs/llm-proxy-gaps.md). Why this stack: [ADR 0001](docs/adr/0001-tech-stack.md).
+[docs/api.md](docs/api.md). Development and testing: [docs/development.md](docs/development.md). Why this stack:
+[ADR 0001](docs/adr/0001-tech-stack.md).
 
 ## Quick start
 
 Requires Docker with Compose v2.
 
-1. Create the config file:
+1. Create the config files (`make env` does the same):
 
    ```bash
    cp .env.example .env
+   cp config/models.example.yaml config/models.yaml
    ```
+
+   Both are git-ignored. Never commit them.
 
 2. Edit `.env`. Replace every `change-me` value:
 
@@ -78,39 +109,89 @@ Requires Docker with Compose v2.
    | `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` | MinIO root credentials. |
    | `S3_ACCESS_KEY`, `S3_SECRET_KEY` | What the API uses to reach MinIO. Use the same values as the root credentials. |
    | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | The first admin, created on startup. The password must be 10-128 characters. |
-   | `LLM_API_KEY` | API key of the LLM endpoint. For llm-proxy this is its `API_KEY`. |
-   | `LLM_BASE_URL` | OpenAI-compatible base URL, ending in `/v1`. Used when `GEMINI=0`. |
+   | `SECRETS_KEY` | Fernet key that encrypts plugin header values (see below). Needed to save plugin headers. |
+   | the variable named by `api_key_env` in `config/models.yaml` | API key of your LLM provider. |
 
-3. Pick the LLM:
+   Generate `SECRETS_KEY` once and keep it (losing it makes stored plugin headers unreadable):
 
-   - `GEMINI=1` (default): [llm-proxy](../llm-proxy) must already be running. The API joins its
-     Docker network `llm-proxy_default` and talks to `http://llm-proxy-ts:8000/v1`.
-     `docker-compose.gemini.yml` sets this URL and overrides `LLM_BASE_URL` from `.env`.
-   - `GEMINI=0`: no external network. Set `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_DEFAULT_MODEL` and `LLM_MODELS` in
-     `.env` to another OpenAI-compatible endpoint that the `api` container can reach. The `replay:*` demo models
-     work without any LLM.
+   ```bash
+   python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+   # or, without a local Python:
+   docker compose run --rm --no-deps api python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+   ```
+
+3. Edit `config/models.yaml`. The file ships with a placeholder provider; either edit it or uncomment one of the
+   presets (OpenAI, Gemini official, DeepSeek, Anthropic compat, OpenRouter, vLLM/Ollama). Set the provider's
+   `base_url`, put the model's real name in `upstream`, set `active` to the id of the model users should get, and
+   put the provider's key in `.env` under the name given by `api_key_env` (the placeholder uses `LLM_BASE_URL` and
+   `LLM_API_KEY`). Check the preset against your provider's current documentation. See
+   [Models configuration](#models-configuration).
 
 4. Start the stack:
 
    ```bash
-   make up                # GEMINI=1
-   make up GEMINI=0       # without llm-proxy
+   make up
    ```
 
-   `make up` creates `.env` from `.env.example` if it is missing, then builds and starts postgres, minio, api and web.
+   `make up` creates the two files if they are missing, then builds and starts postgres, minio, api and web. The
+   models file is read once at startup: after editing it, run `docker compose restart api`. A mistake in it stops the
+   API with an error in `make logs`.
 
 5. Open http://127.0.0.1:8090 and sign in with `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
 
 Check the stack with `make ps` and `make logs`. The API health endpoint is `GET /api/health` (through the web
 port: `curl http://127.0.0.1:8090/api/health`).
 
-Use the same `GEMINI=` value for every make command in a session (`make down GEMINI=0`), because it selects the
-compose files.
+## Models configuration
+
+The API reads its models from `config/models.yaml` (path in `MODELS_CONFIG`, default `/app/config/models.yaml`;
+`./config` is mounted read-only into the `api` container). `config/models.example.yaml` documents every option and has
+presets for OpenAI, Gemini official, DeepSeek, Anthropic compat, OpenRouter and vLLM/Ollama. Provider APIs change:
+check the current documentation before relying on a preset.
+
+Users get one model, the `active` one. The model picker appears only when `dev.model_switcher` is true (for
+development and tests; it also offers the `replay:*` demo models, see [Usage](#usage)).
+
+```yaml
+active: my-model                      # the model users get; must be defined below
+dev:
+  model_switcher: false
+providers:
+  - id: my-provider
+    base_url: https://api.example.com/v1
+    api_key_env: MY_PROVIDER_API_KEY  # name of an env var in .env; never put the key in this file
+    usage: provider                   # provider: trust the usage the API returns; estimate: always use tiktoken
+    models:
+      - id: my-model
+        upstream: provider-model-name # name sent to the provider (default: id)
+        label: My Model               # or {en: ..., vi: ...}
+        vision: true
+        context_window: 128000
+        image_tokens: 765             # estimated tokens per attached image
+        token_ratio: 1.0              # multiplier for tiktoken estimates
+        thinking:                     # omit for models without reasoning controls
+          default: "off"
+          returns_text: true          # the provider streams reasoning text
+          read_from:
+            delta_fields: [reasoning_content, reasoning]
+            parse_tags: false         # true: split <think>...</think> out of the content
+          levels:
+            - {id: "off",  label: {en: Off, vi: Tắt}, patch: {}}
+            - {id: high, label: {en: High, vi: Cao}, patch: {reasoning_effort: high}}
+```
+
+- `${VAR}` and `${VAR:-default}` in values are replaced from the environment. A missing variable stops startup.
+- Unknown keys, duplicate ids, or an `active` model that is not defined stop startup with a clear error.
+- A level's `patch` is merged into the chat request. Keys the OpenAI SDK knows (`reasoning_effort`, `temperature`,
+  ...) are sent as normal parameters; `extra_body` and any other key go into the JSON body.
+- Without `config/models.yaml`, the API builds a registry from the `LLM_*` variables (see below): one provider,
+  token usage always estimated, and thinking levels Off and High (High sends `reasoning_effort: "high"`).
 
 ## Configuration
 
 All variables go in `.env`. The API reads them through `backend/app/config.py` (names are case-insensitive). The
-compose-only variables are read by `docker-compose.yml`.
+compose-only variables are read by `docker-compose.yml`. The `LLM_*` variables (except the timeout) are used only
+when `config/models.yaml` does not exist; `.env.example` has them commented out.
 
 ### API
 
@@ -128,12 +209,15 @@ compose-only variables are read by `docker-compose.yml`.
 | `S3_BUCKET` | `ensemble-chat` | Bucket, created on startup if missing. |
 | `S3_ACCESS_KEY`, `S3_SECRET_KEY` | empty | S3 credentials. |
 | `S3_STARTUP_TIMEOUT_SECONDS` | `30` | How long startup waits for S3 before failing. |
-| `LLM_BASE_URL` | `http://llm-proxy-ts:8000/v1` | OpenAI-compatible base URL. Overridden by `docker-compose.gemini.yml` when `GEMINI=1`. |
-| `LLM_API_KEY` | empty | API key sent to the LLM endpoint. |
-| `LLM_DEFAULT_MODEL` | `gemini-pro` | Default model. If it is not in the list, the first model is used. |
-| `LLM_MODELS` | empty (`.env.example`: `gemini-pro,gemini-flash-lite,gemini-4-hydrogen,gemini-carbon`) | Comma-separated allowlist, order kept. Empty means every model the endpoint lists. |
-| `LLM_TIMEOUT_SECONDS` | `300` | Timeout of a model request. |
-| `REPLAY_ENABLED` | `true` | Show the `replay:*` demo models. |
+| `SECRETS_KEY` | empty | Fernet key that encrypts plugin header values at rest. Without it, saving a plugin with headers fails with 503 `secrets_not_configured`. If plugins already exist and the key is missing or invalid, the API refuses to start. |
+| `MODELS_CONFIG` | `/app/config/models.yaml` | Path of the models file inside the container (`./config` is mounted read-only at `/app/config`). |
+| `DEV_MODEL_SWITCHER` | `false` | Fallback mode only: same as `dev.model_switcher` in the file. |
+| `LLM_BASE_URL` | empty | Fallback only: OpenAI-compatible base URL, ending in `/v1`. |
+| `LLM_API_KEY` | empty | Fallback only: API key sent to the endpoint. |
+| `LLM_DEFAULT_MODEL` | empty | Fallback only: the active model. Required, with `LLM_BASE_URL`, when there is no models file. |
+| `LLM_MODELS` | empty | Fallback only: extra model ids, comma-separated, order kept. |
+| `LLM_TIMEOUT_SECONDS` | `300` | Timeout of a model request (always applies). |
+| `REPLAY_ENABLED` | `true` | Allow the `replay:*` demo models (they are offered only with `dev.model_switcher`, or when `active` is a `replay:*` id). |
 | `REPLAY_TIME_SCALE` | `1.0` | Multiplies the delays of replay fixtures. `0` plays them instantly. |
 | `MAX_UPLOAD_MB` | `200` | Maximum upload size enforced by the API. |
 | `THROTTLE_WINDOW_SECONDS` | `900` | Window for failed-login and per-IP login counting. |
@@ -157,11 +241,11 @@ compose-only variables are read by `docker-compose.yml`.
 
 ## Make targets
 
-Run `make help` for the list. Set `GEMINI=0` to leave out `docker-compose.gemini.yml`.
+Run `make help` for the list. Development options: [docs/development.md](docs/development.md).
 
 | Target | What it does |
 | :--- | :--- |
-| `make env` | Creates `.env` from `.env.example` if missing. |
+| `make env` | Creates `.env` and `config/models.yaml` from the examples if missing. |
 | `make up` | Starts the stack in the background, building images if needed. |
 | `make down` | Stops the stack. |
 | `make logs` | Follows service logs. |
@@ -169,22 +253,15 @@ Run `make help` for the list. Set `GEMINI=0` to leave out `docker-compose.gemini
 | `make build` | Builds all images. |
 | `make test-be` | Backend tests (`pytest`) in the `api-test` container, against real Postgres and MinIO from compose. Uses the database `ensemble_chat_test` and bucket `ensemble-chat-test`. |
 | `make test-fe` | Frontend unit tests, type check and build in a `node:24.15.0-alpine` container (`npm ci && npm test && npm run build`). |
-| `make e2e` | Runs the Playwright suite in `e2e/` against the live stack. See below. |
+| `make e2e` | Runs the Playwright suite in `e2e/` against the live stack, using the development provider. See below. |
 | `make e2e-down` | Stops the stack started by `make e2e`. |
 | `make clean` | Stops the stack and deletes the volumes (destroys local data). |
 
 ### End-to-end tests
 
-<!-- TODO(e2e): verify after Step 5 -->
-
-`make e2e` runs the Playwright suite in `e2e/` (Playwright 1.65.0, container
-`mcr.microsoft.com/playwright:v1.65.0-noble`) against the whole compose stack. Pass extra Playwright arguments with
-`ARGS`, for example `make e2e ARGS="--grep @gemini"`. Tests tagged `@gemini` call the real model through
-llm-proxy. The overlay `docker-compose.e2e.yml` raises the per-IP login and registration throttles for the
-suite. See `e2e/README.md` if present.
-
-Playwright's Chromium has no H.264/AAC codecs, so playback and seeking tests use WebM and MP3. The mp4 demo file is
-only checked for Range requests and downloads.
+`make e2e` runs the Playwright suite in `e2e/` against the whole compose stack (with the e2e overrides and its own
+`e2e/config/models.e2e.yaml`). Pass extra Playwright arguments with `ARGS`, for example
+`make e2e ARGS="--grep A8"`. `make e2e-down` stops the stack. Details: [docs/development.md](docs/development.md).
 
 ## Usage
 
@@ -203,23 +280,35 @@ There is no email: password resets are done by an admin, or by the user in Setti
 
 ### Models
 
-The model menu in the chat header lists two groups.
+Users chat with the one `active` model from `config/models.yaml`. With `dev.model_switcher: true` the chat header also
+shows a model picker with every configured model plus the `replay:*` demo models (`REPLAY_ENABLED=true`). Demo
+models replay a recorded event stream and call no LLM.
 
-- **Models:** what the LLM endpoint offers (`/v1/models`), filtered by `LLM_MODELS`. With llm-proxy these
-  are `gemini-pro`, `gemini-flash-lite`, `gemini-4-hydrogen` and `gemini-carbon`.
-- **Demo (recorded):** `replay:*` models, shown when `REPLAY_ENABLED=true`. They replay a recorded event stream and
-  call no LLM.
-  - `replay:agent-demo` shows a full agent run: a thinking block, markdown, two tool calls (`read_file`,
-    `run_tests`), a `researcher` sub-agent with its own tool and a nested `summarizer` sub-agent, a tool that
-    returns a 5-image gallery, a tool that returns video (WebM and MP4), and a tool that returns audio.
-  - `replay:error-demo` writes some text, runs a `deploy` tool, then ends with an error message.
+- `replay:agent-demo` shows a full agent run: a thinking block, markdown, two tool calls (`read_file`,
+  `run_tests`), a `researcher` sub-agent with its own tool and a nested `summarizer` sub-agent, a tool that
+  returns a 5-image gallery, a tool that returns video (WebM and MP4), and a tool that returns audio.
+- `replay:error-demo` writes some text, runs a `deploy` tool, then ends with an error message.
 
-### Thinking toggle
+### Thinking levels
 
-The **Thinking** switch in the header (Off or High) sends `reasoning: "high"` with the message. The backend then
-requests `reasoning_effort: "high"` from the model, and any `reasoning_content` it streams appears as a live
-thinking block. The switch is disabled for `replay:*` models (they always show what the fixture contains). The
-choices of model, thinking and language are kept in the browser (`localStorage`).
+The **Thinking** selector in the composer lists the levels the model defines in `thinking.levels`, and starts at
+`thinking.default`. The chosen level is remembered per model in the browser. A model with a single level shows an
+"always on" label, and a model without `thinking` shows no selector. The level's `patch` decides what is sent to the
+provider (for example `reasoning_effort`). Reasoning text the model streams appears as a live thinking block, if the
+model's `read_from` settings say where to find it. Replay models have no levels.
+
+### Plugins and skills
+
+**Settings > Plugins & Skills** (`/settings/integrations`, also in the account menu) is per user.
+
+- **Skills:** upload a `SKILL.md` or a `.zip` with `SKILL.md` at its root. The file needs YAML frontmatter with `name`
+  (a-z, 0-9, `-`, up to 64 characters) and `description`. Uploading an existing name asks before replacing it. You can
+  view, enable or disable and delete skills.
+- **Plugins:** register MCP servers (name, `http` or `sse`, URL, headers) or import a `.mcp.json`. Header values are
+  hidden in the list and encrypted in the database.
+
+A banner on the page says it plainly: these are stored for a future agent and the current chat does not use them.
+The server never contacts a plugin URL and never runs skill code. Limits and errors: [docs/api.md](docs/api.md#skills).
 
 ## Security notes
 
@@ -249,7 +338,12 @@ choices of model, thinking and language are kept in the browser (`localStorage`)
   server sends a CSP of `default-src 'self'` (images and media from `self`, `blob:` and `data:` only) and
   `frame-ancestors 'none'` for the app.
 - **Markdown:** raw HTML in model output is not rendered.
-- **Secrets:** never commit `.env`. It is git-ignored; only `.env.example` is tracked. Use real passwords, not the
+- **Plugin secrets:** header values of plugins are encrypted at rest with Fernet (`SECRETS_KEY`), never returned by
+  the API (only a mask), and never logged. Back the key up with the database: without it they cannot be read.
+- **No outbound calls for plugins and skills:** plugin URLs are only stored, so they add no server-side request
+  forgery surface. Skill archives are checked (path traversal, symlinks, size and file-count limits, encrypted
+  archives refused) and never executed. Besides Postgres and MinIO, the `api` container only calls the configured model providers.
+- **Secrets:** never commit `.env` or `config/models.yaml`. It is git-ignored; only `.env.example` is tracked. Use real passwords, not the
   `change-me` placeholders. The API and the database are not published to the host; only `web` is, on `127.0.0.1`.
 
 ## Limitations
@@ -263,8 +357,8 @@ choices of model, thinking and language are kept in the browser (`localStorage`)
   `cgr.dev/chainguard/minio`, pinned by digest. The code only uses the generic S3 API (boto3, path-style
   addressing), so another S3 server (a MinIO fork, RustFS) can replace it by changing the `minio` service and the
   `S3_*` variables.
-- **LLM features follow the endpoint.** llm-proxy has no tool calling, no video or audio in chat and sends
-  generated images as base64. See [docs/llm-proxy-gaps.md](docs/llm-proxy-gaps.md).
+- **LLM features follow the provider.** The app uses plain chat completions: no tool calling is sent, and what
+  the model can read or produce depends on the provider.
 - **Test codecs.** Playwright's Chromium has no H.264/AAC, so automated playback tests use WebM and MP3.
 - **Uploads are not virus-scanned,** and there is no per-user quota.
 
@@ -273,10 +367,10 @@ choices of model, thinking and language are kept in the browser (`localStorage`)
 ```
 backend/                FastAPI app (Python 3.13, uv)
   app/                  main.py, config.py, db.py, models.py, security.py, deps.py, errors.py, middleware.py
-    routers/            auth, admin, conversations, messages, files, models
+    routers/            auth, admin, conversations, messages, files, models, context, skills, plugins
     services/           runs (RunRegistry, SSE), storage (S3), media, history, sessions, throttle,
-                        llm_models, startup
-    providers/          base, openai_provider, replay_provider, datauri
+                        model_registry, usage, tokens, skills, secrets, startup
+    providers/          base, openai_provider, replay_provider, datauri, tagsplit
     replay/             fixtures/*.json (replay:* models) and assets/ (see assets/README.md)
   alembic/              database migrations (run on startup)
   tests/                pytest suite
@@ -286,13 +380,17 @@ frontend/               React 19 + TypeScript + Vite
   nginx/                default.conf.template (SPA, /api proxy, security headers)
   Dockerfile            build, then nginx
 e2e/                    Playwright suite
-docs/                   architecture.md, api.md, llm-proxy-gaps.md, adr/, images/
+config/                 models.example.yaml (copy to models.yaml, git-ignored)
+docs/                   architecture.md, api.md, development.md, dev/, adr/, images/
 docker-compose.yml      postgres, minio, api, web (+ profile test: api-test)
-docker-compose.gemini.yml   joins the api to the llm-proxy network
 docker-compose.e2e.yml  e2e overlay
 Makefile  .env.example
 ```
 
+## Development and testing
+
+See [docs/development.md](docs/development.md).
+
 ## License
 
-[MIT](LICENSE) © 2026 Ensemble Labs.
+MIT, see [LICENSE](LICENSE).

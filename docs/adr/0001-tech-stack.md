@@ -8,7 +8,7 @@
 | Area | Choice | Why |
 |---|---|---|
 | Backend | FastAPI, Python 3.13, uv, SQLAlchemy 2 (async) + asyncpg, Alembic | Async fits streaming. FastAPI has SSE built in (`fastapi.sse`), so no extra package is needed. Same Python and uv setup as coding-agent. |
-| LLM client | `openai` SDK against any OpenAI-compatible `base_url` | One code path for llm-proxy and other endpoints. The SDK keeps `reasoning_content` (in `model_extra`) and raises on stream error chunks. |
+| LLM client | `openai` SDK against any OpenAI-compatible `base_url`, configured per provider and model in `config/models.yaml` (thinking levels as request patches) | One code path for any OpenAI-compatible provider (OpenAI, Gemini, DeepSeek, OpenRouter, vLLM, Ollama). The SDK keeps `reasoning_content` (in `model_extra`) and raises on stream error chunks. |
 | Database | Postgres 18 | Users, sessions, login throttle, conversations, and the part tree as JSONB. One database also holds the login counters, so no Redis. |
 | File storage | MinIO through boto3 (generic S3) | Uploads and generated media outside the database. Only S3 calls are used, so the server can be swapped. |
 | Auth | Email and password, argon2id, server-side sessions in an HttpOnly cookie, Origin check for CSRF | Standard, revocable at once (disable a user, change a password), no email or SSO needed. Login attempts are limited in Postgres. |
@@ -18,8 +18,10 @@
 | Streaming | SSE over `fetch` with `eventsource-parser` | Needs POST and cookies, which `EventSource` cannot do. Replies run in the API process and clients attach and detach. |
 | Web server | nginx serving the SPA and proxying `/api/` | One origin: no CORS, cookies work. The only published port. Rewrites `X-Forwarded-For` for the throttle. |
 | i18n | Typed dictionaries (`en.ts`, `vi.ts`) and a `useT()` hook | Two languages only. TypeScript forces both files to have the same keys. No library. |
+| Secrets | Fernet (`cryptography`) with a key in `SECRETS_KEY` | Plugin header values are encrypted at rest and never returned. No external secret store to run. |
+| Token counts | `tiktoken` (`o200k_base`, baked in the image at build) plus the provider's own usage when reported | Context numbers work offline; real numbers win when available. |
 | Tests | pytest on real Postgres and MinIO, vitest, Playwright | No mocks for the database or storage. The browser suite runs against the whole stack. |
-| Packaging | Docker Compose, a Makefile with `GEMINI=1/0` | `docker-compose.gemini.yml` joins the external llm-proxy network only when wanted. |
+| Packaging | Docker Compose, a Makefile | One command starts the stack. An optional compose file joins a development provider's network. |
 
 ## Rejected alternatives
 
@@ -40,8 +42,8 @@
 - The MinIO project is archived and its upstream images cannot be pulled. Compose uses the Chainguard build
   (`cgr.dev/chainguard/minio`) pinned by digest, which only has a `latest` tag. Replacing it (a fork, RustFS) means
   changing the `minio` service and the `S3_*` variables, not the code.
-- Generated images arrive as base64 in the text stream, and must be extracted and stored before they are shown
-  (see [llm-proxy-gaps.md](../llm-proxy-gaps.md)).
+- Some providers return generated images as base64 in the text stream, and must be extracted and stored before they are shown
+  (some providers do this; see [development.md](../development.md)).
 - The app has no agent logic. Tool and sub-agent cards are demonstrated by recorded streams (`replay:*`). A real
   agent is added as another provider (`backend/app/providers/`).
 - Playwright's Chromium has no H.264/AAC, so media tests use WebM and MP3.

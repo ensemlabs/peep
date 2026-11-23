@@ -18,10 +18,10 @@ browser ──► web (nginx :80, host 127.0.0.1:${WEB_PORT:-8090})
 | `postgres` | `postgres:18.6-alpine` | Users, sessions, login throttle, conversations, messages (with the part tree as JSONB), file metadata. Volume at `/var/lib/postgresql`. |
 | `minio` | `cgr.dev/chainguard/minio`, pinned by digest | S3 storage for uploaded and generated files. Healthcheck `mc ready local`. |
 | `api-test` | `backend/Dockerfile`, target `test`, profile `test` | `pytest` against real Postgres and MinIO (database `ensemble_chat_test`, bucket `ensemble-chat-test`). |
-| LLM | external, for example llm-proxy | Chat completions. Reached with `LLM_BASE_URL`. |
+| LLM provider | external, any OpenAI-compatible API | Chat completions. Endpoints and keys come from `config/models.yaml` (or the `LLM_*` fallback). |
 
-All services share the compose network `backend`. With `GEMINI=1` the API also joins the external network
-`llm-proxy_default` (`docker-compose.gemini.yml`) and `LLM_BASE_URL` becomes `http://llm-proxy-ts:8000/v1`.
+All services share the compose network `backend`. For local development the API can also join the network of a
+dev provider, see [development.md](development.md).
 
 ### nginx
 
@@ -44,19 +44,21 @@ Everything is one origin, so no CORS is needed and the session cookie works as i
 | :--- | :--- |
 | `app/main.py` | App, lifespan (startup tasks), Origin middleware, `/api/health`, routers. Docs endpoints are off. |
 | `app/config.py` | Settings from environment (`pydantic-settings`). |
-| `app/models.py`, `alembic/` | Tables: `users`, `sessions`, `auth_throttle`, `conversations`, `messages`, `files`. Migration `0001_initial`. |
+| `app/models.py`, `alembic/` | Tables: `users`, `sessions`, `auth_throttle`, `conversations`, `messages`, `files`. Migrations `0001_initial` and `0002_models_usage_skills_plugins` (see [Database](#database)). |
 | `app/security.py` | argon2id, email and password rules, session token, client IP. |
 | `app/deps.py` | Dependencies `current_session`, `current_user`, `active_user`, `admin_user`. |
 | `app/middleware.py` | Origin/Referer check. |
 | `app/errors.py` | `ApiError` and the JSON error handlers. |
-| `app/routers/` | `auth`, `admin`, `models`, `conversations`, `messages`, `files`. |
+| `app/routers/` | `auth`, `admin`, `models`, `context`, `conversations`, `messages`, `files`, `skills`, `plugins`. |
 | `app/services/runs.py` | `RunState`, `RunRegistry`, SSE helpers. |
 | `app/services/storage.py` | boto3 S3 client, bucket creation, range reads, deletes. |
 | `app/services/media.py` | Upload ingestion, kind detection, thumbnails, `FileMeta`. |
 | `app/services/history.py` | Builds the OpenAI message list for a run. |
-| `app/services/llm_models.py` | Model catalogue (upstream list, allowlist, replay). |
+| `app/services/model_registry.py` | Model registry: loads `config/models.yaml` (or builds one from the `LLM_*` variables), resolves providers, models and thinking levels, builds the OpenAI clients. |
+| `app/services/usage.py`, `tokens.py` | Usage normalisation, tiktoken estimates. |
+| `app/services/skills.py`, `secrets.py` | Skill package parsing and validation, Fernet encryption of plugin headers. |
 | `app/services/sessions.py`, `throttle.py`, `startup.py` | Sessions, login throttling, startup tasks. |
-| `app/providers/` | `base.py` (`RunContext`, `Provider`), `openai_provider.py`, `replay_provider.py`, `datauri.py`. |
+| `app/providers/` | `base.py` (`RunContext`, `Provider`), `openai_provider.py`, `replay_provider.py`, `datauri.py`, `tagsplit.py` (think-tag splitter). |
 
 Providers are the extension point. A provider is an object with `async def run(ctx: RunContext)` that emits parts.
 The code chooses `ReplayProvider` for model ids that start with `replay:` and `OpenAIProvider` for the rest.
@@ -65,7 +67,7 @@ The code chooses `ReplayProvider` for model ids that start with `replay:` and `O
 
 React 19, TypeScript, Vite, Tailwind. Server state is in TanStack Query. The state of running replies (and the
 selected model, thinking level) is in zustand; model, thinking level and language are kept in `localStorage`
-(`ec_model`, `ec_reasoning`, `ec_lang`). Routes: `/login`, `/register`, `/`, `/c/:id`, `/settings`, `/admin/users`.
+(`ec_model`, `ec_levels` (level per model), `ec_lang`, `ec_sidebar_collapsed`). Routes: `/login`, `/register`, `/`, `/c/:id`, `/settings`, `/settings/integrations`, `/admin/users`.
 The event reducer `applyEvent` (`features/chat/applyEvent.ts`) turns SSE events into the part tree. Strings live in
 `src/i18n/en.ts` and `vi.ts`; the Vietnamese file must have exactly the same keys. The API's error `code` is
 translated in the browser.
@@ -88,26 +90,81 @@ The SSE connection is only a subscriber. If the client disconnects, its queue is
 queues are unbounded, so a slow client does not slow the run. A `: ping` comment goes out after 15 seconds
 without events.
 
+### Model registry
+
+`services/model_registry.py` loads `config/models.yaml` once at startup (`MODELS_CONFIG`). The file is validated with
+strict models (unknown keys, duplicate ids, a missing `active` model or an unset `${VAR}` stop the API at startup).
+If the file does not exist, a registry is built from the `LLM_*` variables (one provider, `usage: estimate`, levels
+Off and High); if those are not set either, startup fails with an explanatory error.
+
+- A provider has `base_url`, `api_key_env` (the key is read from that environment variable) and `usage`
+  (`provider` or `estimate`). A model has `id`, `upstream` (name sent to the provider), `label` (string or per
+  language), `vision`, `context_window`, `image_tokens`, `token_ratio`, and `thinking`.
+- `selectable()` decides which models users may use: the `active` model, plus every model and the `replay:*`
+  fixtures when `dev.model_switcher` is on (replay needs `REPLAY_ENABLED`). `choose_model()` in the conversations
+  router applies it: outside switcher mode the `model` sent by a client is ignored.
+- One `AsyncOpenAI` client is kept per `(base_url, key, timeout)` and closed on shutdown.
+
+### Thinking levels and the request patch
+
+`thinking.levels` is a list of `{id, label, patch}`. `choose_level()` picks the level for a request: none for a model
+without `thinking`, `thinking.default` when the client sent nothing, else the requested id (unknown ids give 422
+`invalid_reasoning_level`).
+
+`OpenAIProvider.build_request()` starts from `{model: upstream, messages, stream: true, stream_options:
+{include_usage: true}}` and calls `build_request_params()`:
+
+1. `patch.extra_body` is taken out and kept as the start of `extra_body`.
+2. The rest of the patch is deep-merged into the request.
+3. Each key of the merged request that the OpenAI SDK accepts as an argument (`reasoning_effort`, `temperature`,
+   `top_p`, `max_tokens`, `seed`, `stop`, ...) or that was already in the base is passed as a keyword argument. Every
+   other key (for example `thinking`, `google`, `reasoning`, `chat_template_kwargs`) goes into `extra_body`, which the
+   SDK merges into the JSON body.
+
 ### OpenAI provider
 
 `OpenAIProvider` builds the history (`services/history.py`) and calls
-`AsyncOpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY, timeout=LLM_TIMEOUT_SECONDS, max_retries=0).chat.completions.create(stream=True)`.
-With thinking on it adds `reasoning_effort="high"`.
+`client.chat.completions.create(**kwargs)` with the request above and `max_retries=0`, timeout
+`LLM_TIMEOUT_SECONDS`.
 
-- History: text of earlier user and assistant messages (the assistant's root `text` parts; thinking, tools and
-  images are not replayed), then the last user message. Its images (at most 16, each at most 20 MB) become
-  `image_url` data URIs. Other attachments become a line `[Attached file: name (mime, size)]`. Images of earlier
-  turns are not re-sent.
-- Stream mapping: `delta.reasoning_content` goes to a `thinking` part (closed with `done` when the first content
-  arrives or the stream ends). `delta.content` goes to a `text` part through the data-URI extractor. Chunks without
-  choices are skipped.
+- History: `load_turns()` is the single source for both the run and `GET /api/context`. It contains the text of
+  earlier user and assistant messages (the assistant's root `text` parts; thinking, tools and images are not
+  replayed), then the last user message. Its images (at most 16, each at most 20 MB) become `image_url` data URIs.
+  Other attachments become a line `[Attached file: name (mime, size)]`. Images of earlier turns are not re-sent.
+- Stream mapping: the first non-empty delta field among the model's `read_from.delta_fields` (default
+  `reasoning_content`, `reasoning`) goes to a `thinking` part (closed with `done` when the first answer text arrives
+  or the stream ends). `delta.content` goes to a `text` part through the data-URI extractor. Chunks without choices are
+  skipped, except that a chunk with `usage` is remembered.
+- Tag splitter: with `read_from.parse_tags: true`, `delta.content` first goes through `ThinkTagSplitter`
+  (`providers/tagsplit.py`). It is a streaming state machine that moves text between `<tag>` and `</tag>` (for the
+  configured `tag_names`, default `think`, `thought`) into the thinking part, holds back a possibly incomplete tag at
+  the end of a chunk, and drops whitespace after a closing tag. Everything else is answer text.
 - Errors (`openai.OpenAIError`) become a `ProviderError`: timeout "The model did not respond in time", connection
   failure "Could not reach the model service", HTTP errors "Model service error <status>: <message>". The message is
   stored in `messages.error` and sent in `done`.
 
+### Usage and token estimates
+
+After a successful stream the provider emits one `usage` event (`ctx.emit_usage`), which `RunState` stores and writes
+to `messages.usage` (JSONB) when the run finishes.
+
+- With `usage: provider` and a usage chunk from the API, `normalize_usage()` maps it to the `Usage` shape (input,
+  output, reasoning from `completion_tokens_details`, cache read from `prompt_tokens_details.cached_tokens`,
+  `prompt_cache_hit_tokens` or `cache_read_input_tokens`, cache write from `cache_creation_input_tokens`;
+  `source: "provider"`).
+- With `usage: estimate`, or when the API sent nothing usable, the usage is estimated (`source: "estimate"`): input is
+  `tokens.count_messages()` over the request messages (text with tiktoken `o200k_base`, each image counts the model's
+  `image_tokens`), output is the answer plus thinking text, and `reasoning_tokens` the thinking text. Counts are
+  multiplied by `token_ratio`. Cache fields are `null`.
+- Replay runs estimate from the emitted parts, with `input_tokens` 0.
+- tiktoken needs its BPE file. The backend Dockerfile downloads `o200k_base` at build time into `TIKTOKEN_CACHE_DIR`
+  (`/opt/tiktoken`), so the running container needs no network access.
+- `GET /api/context` estimates the next request with the same turns and, when the last message is a provider-reported
+  assistant reply, uses its real input and output counts instead (see [api.md](api.md#get-apicontext)).
+
 ### Data-URI image extraction
 
-Some endpoints (llm-proxy) return generated images inline in the text as
+Some providers return generated images inline in the text as
 `![alt](data:image/png;base64,...)`, in one delta that can be several MB. `StreamingImageExtractor`
 (`providers/datauri.py`) splits the text stream into plain text and decoded images, so the base64 never reaches the
 database or the browser.
@@ -165,6 +222,31 @@ closed (`thinking` as `done`, the rest as `error`). The web app sends it from th
   sandbox`.
 - Attachments to the model are read back from S3 and sent as data URIs only for the last user message.
 
+## Database
+
+Tables: `users`, `sessions`, `auth_throttle`, `conversations`, `messages`, `files`, `skills`, `plugins`.
+
+Migration `0002` adds `messages.usage` (JSONB), `conversations.pinned` and `conversations.last_read_at` (existing
+conversations are set as read), and the tables `skills` (unique per user and name; file list as JSONB) and `plugins`
+(unique per user and lower-cased name; headers as JSONB `[{name, value_enc}]`).
+
+The conversation list computes `status`, `unread` and `preview` with lateral subqueries over the last assistant
+message and the last non-empty message of each conversation, so it needs no extra columns. Paging uses the cursor
+`<pinned 0|1>~<updated_at ISO>` over the order (pinned, `updated_at` descending).
+
+## Skills and plugins
+
+Both are stored for a future agent backend. Nothing in the chat path reads them.
+
+- Skills: an upload is parsed in a worker thread (`services/skills.py`): `.md` or `.zip`, path traversal, symlinks,
+  encrypted entries and duplicate entries rejected, size and count limits, frontmatter validated. Files are written
+  to S3 under `u/<user id>/skills/<skill id>/`; the database keeps name, description, version, size and the file list.
+  `read_upload()` (shared with the file upload) enforces the 5 MB limit while streaming.
+- Plugins: URL and header names are validated and stored; the API never makes a request to them. Header values are
+  encrypted with Fernet (`services/secrets.py`) using `SECRETS_KEY` and stored as `value_enc`; responses show only a
+  mask. Updating headers with `value: null` keeps the old ciphertext. Without a valid key, storing a header gives
+  503 `secrets_not_configured`.
+
 ## Auth flow
 
 1. Register: per-IP counter (10 per hour), validation, argon2id hash, user `pending`, session, cookie. Login:
@@ -188,15 +270,18 @@ Details and numbers: [api.md](api.md#auth) and the Security section of the [READ
 
 The API lifespan (`app/main.py`) runs these in order, and does not serve requests until they finish:
 
+0. `get_registry()`: load and validate the models file, so a bad config fails fast.
 1. `alembic upgrade head` (in a worker thread, because Alembic's async environment needs its own event loop).
-2. `ensure_bucket()`: create the S3 bucket if missing, retrying with backoff for up to `S3_STARTUP_TIMEOUT_SECONDS`
+2. `check_secrets()`: if `SECRETS_KEY` is set, or plugins already exist, the key must be a valid Fernet key, otherwise
+   startup fails. With no key and no plugins it only logs a warning (saving plugin headers is then refused).
+3. `ensure_bucket()`: create the S3 bucket if missing, retrying with backoff for up to `S3_STARTUP_TIMEOUT_SECONDS`
    (MinIO may still be starting).
-3. `seed_admin()`: if `ADMIN_EMAIL` and `ADMIN_PASSWORD` are set, create an active admin (display name "Admin"), or
+4. `seed_admin()`: if `ADMIN_EMAIL` and `ADMIN_PASSWORD` are set, create an active admin (display name "Admin"), or
    promote an existing user with that email to active admin without touching its password.
-4. `mark_interrupted_messages()`: every message still `streaming` becomes `error` with the error `interrupted`
+5. `mark_interrupted_messages()`: every message still `streaming` becomes `error` with the error `interrupted`
    (their runs died with the previous process).
 
-On shutdown, running tasks are cancelled (waiting up to 10 seconds) and the database engine is closed.
+On shutdown, running tasks are cancelled (waiting up to 10 seconds), the model clients are closed and the database engine is closed.
 
 The compose healthcheck of `api` calls `GET /api/health`, which runs `SELECT 1`. `web` starts after `api` is healthy.
 
