@@ -1,0 +1,46 @@
+import { memo } from 'react'
+import ReactMarkdown, { type Components } from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import { CodeBlock } from './CodeBlock'
+
+function makeComponents(streaming: boolean): Components {
+  return {
+    pre: ({ children }) => <>{children}</>,
+    code({ className, children }) {
+      const text = String(children ?? '')
+      const lang = /language-([\w+-]+)/.exec(className ?? '')?.[1]
+      if (lang || text.includes('\n')) {
+        return <CodeBlock code={text} language={lang} streaming={streaming} />
+      }
+      return <code>{children}</code>
+    },
+    a: ({ href, children }) => (
+      <a href={href} target="_blank" rel="noopener noreferrer">
+        {children}
+      </a>
+    ),
+    table: ({ children }) => (
+      <div className="table-wrap">
+        <table>{children}</table>
+      </div>
+    ),
+    // Only API-served media is allowed; never inline base64 into the DOM.
+    img: ({ src, alt }) =>
+      typeof src === 'string' && !src.startsWith('data:') ? (
+        <img src={src} alt={alt ?? ''} loading="lazy" className="max-h-[480px] max-w-full rounded-lg object-contain" />
+      ) : null,
+  }
+}
+
+const STREAMING = makeComponents(true)
+const STATIC = makeComponents(false)
+
+export const Markdown = memo(function Markdown({ text, streaming = false }: { text: string; streaming?: boolean }) {
+  return (
+    <div className="md" data-testid="markdown">
+      <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml components={streaming ? STREAMING : STATIC}>
+        {text}
+      </ReactMarkdown>
+    </div>
+  )
+})

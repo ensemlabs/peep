@@ -1,0 +1,41 @@
+import { describe, expect, it } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { Mascot, mascotClass, mascotStateFor } from './Mascot'
+import type { Message } from '@/api/types'
+
+const msg = (over: Partial<Message>): Message => ({
+  id: 'm', role: 'assistant', content: '', attachments: [], parts: [], status: 'streaming', model: 'x', created_at: '', ...over,
+})
+const T = '2026-01-01T00:00:00Z'
+
+describe('Mascot', () => {
+  it.each(['idle', 'thinking', 'working', 'error'] as const)('maps state %s to a class and data-state', (state) => {
+    expect(mascotClass(state, true)).toBe(`mascot mascot--${state}`)
+    render(<Mascot state={state} />)
+    const el = screen.getByTestId('mascot')
+    expect(el).toHaveAttribute('data-state', state)
+    expect(el).toHaveClass(`mascot--${state}`)
+  })
+  it('is static when animated=false', () => {
+    expect(mascotClass('idle', false)).toContain('mascot--still')
+  })
+  it('only shows thought dots while thinking', () => {
+    const { container, rerender } = render(<Mascot state="thinking" />)
+    expect(container.querySelector('.m-dots')).not.toBeNull()
+    rerender(<Mascot state="idle" />)
+    expect(container.querySelector('.m-dots')).toBeNull()
+  })
+})
+
+describe('mascotStateFor', () => {
+  it('follows the running part', () => {
+    expect(mascotStateFor(msg({ parts: [] }))).toBe('thinking')
+    expect(mascotStateFor(msg({ parts: [{ id: 't', type: 'thinking', text: '', status: 'running', started_at: T }] }))).toBe('thinking')
+    expect(mascotStateFor(msg({ parts: [{ id: 't', type: 'tool', name: 'n', input: {}, output: null, files: [], status: 'running', started_at: T }] }))).toBe('working')
+    expect(mascotStateFor(msg({ parts: [{ id: 't', type: 'text', text: 'hi' }] }))).toBe('idle')
+  })
+  it('is error / idle for finished messages', () => {
+    expect(mascotStateFor(msg({ status: 'error' }))).toBe('error')
+    expect(mascotStateFor(msg({ status: 'complete' }))).toBe('idle')
+  })
+})
