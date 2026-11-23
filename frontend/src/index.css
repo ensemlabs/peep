@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --bg: #ffffff;
   --surface: #f7f7f8;
   --surface-2: #efeff1;
@@ -14,21 +14,40 @@
   --danger: #dc2626;
   --success: #16a34a;
 }
+/* Dark palette: neutral near-black surfaces (no blue tint, not pure black). */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #1b1b1b;
+  --surface: #232323;
+  --surface-2: #2c2c2c;
+  --hover: #333333;
+  --fg: #ececec;
+  --muted: #a3a3a3;
+  --line: #363636;
+  --accent: #ececec;
+  --accent-fg: #1b1b1b;
+  --danger: #f87171;
+  --success: #4ade80;
+}
+/* Before theme-init.js has run (or without JS) follow the system. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #131315;
-    --surface: #1b1b1e;
-    --surface-2: #232327;
-    --hover: #2a2a2f;
-    --fg: #ececf0;
-    --muted: #9a9aa5;
-    --line: #2e2e34;
-    --accent: #ececf0;
-    --accent-fg: #131315;
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --bg: #1b1b1b;
+    --surface: #232323;
+    --surface-2: #2c2c2c;
+    --hover: #333333;
+    --fg: #ececec;
+    --muted: #a3a3a3;
+    --line: #363636;
+    --accent: #ececec;
+    --accent-fg: #1b1b1b;
     --danger: #f87171;
     --success: #4ade80;
   }
 }
+
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
   --color-bg: var(--bg);
@@ -80,9 +99,13 @@ button:disabled {
 .shiki span {
   color: var(--shiki-light);
 }
+:root[data-theme='dark'] .shiki,
+:root[data-theme='dark'] .shiki span {
+  color: var(--shiki-dark);
+}
 @media (prefers-color-scheme: dark) {
-  .shiki,
-  .shiki span {
+  :root:not([data-theme]) .shiki,
+  :root:not([data-theme]) .shiki span {
     color: var(--shiki-dark);
   }
 }

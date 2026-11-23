@@ -9,6 +9,7 @@ import { PasswordInput } from '@/features/auth/PasswordInput'
 import { validateNewPassword } from '@/features/auth/validation'
 import { useOutletContext } from 'react-router'
 import type { User } from '@/api/types'
+import { ThemeSwitch } from '@/components/ThemeSwitch'
 import { TopBar } from '@/layout/TopBar'
 
 export function SettingsPage() {
@@ -58,6 +59,10 @@ export function SettingsPage() {
               <option value="en">{t('lang.en')}</option>
               <option value="vi">{t('lang.vi')}</option>
             </select>
+          </section>
+          <section>
+            <h2 className="mb-3 text-sm font-semibold">{t('theme.label')}</h2>
+            <ThemeSwitch labels />
           </section>
           <section>
             <h2 className="mb-3 text-sm font-semibold">{t('settings.password')}</h2>

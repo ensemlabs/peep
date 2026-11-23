@@ -188,6 +188,10 @@ export const vi = {
   'admin.actionsFor': 'Thao tác cho {email}',
   'admin.forbidden': 'Chỉ quản trị viên mới xem được trang này.',
 
+  'theme.label': 'Giao diện',
+  'theme.light': 'Sáng',
+  'theme.dark': 'Tối',
+  'theme.system': 'Theo hệ thống',
   'settings.title': 'Cài đặt',
   'settings.password': 'Đổi mật khẩu',
   'settings.passwordDone': 'Mật khẩu của bạn đã được thay đổi.',

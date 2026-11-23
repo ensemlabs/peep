@@ -8,6 +8,7 @@ import type { Conversation, User } from '@/api/types'
 import { useI18n, type Lang } from '@/i18n'
 import { cn } from '@/lib/cn'
 import { Button } from '@/components/ui/Button'
+import { ThemeSwitch } from '@/components/ThemeSwitch'
 import { Dialog } from '@/components/ui/Dialog'
 import { useLogout } from '@/features/auth/useMe'
 import { CONVERSATIONS_KEY } from '@/features/chat/runner'
@@ -259,6 +260,10 @@ function UserMenu({ user }: { user: User }) {
                 </DropdownMenu.RadioItem>
               ))}
             </DropdownMenu.RadioGroup>
+            <DropdownMenu.Label className="px-2.5 py-1 text-xs font-medium text-muted">{t('theme.label')}</DropdownMenu.Label>
+            <div className="px-2 pb-1">
+              <ThemeSwitch className="w-full [&>button]:flex-1" />
+            </div>
             <DropdownMenu.Separator className="my-1 h-px bg-line" />
             <DropdownMenu.Item className={item} onSelect={() => navigate('/settings')} data-testid="menu-settings">
               <Settings className="size-4" /> {t('menu.settings')}

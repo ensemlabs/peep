@@ -4,7 +4,10 @@ import { BrowserRouter } from 'react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { App } from './App'
 import { I18nProvider } from './i18n'
+import { initTheme } from './lib/theme'
 import './index.css'
+
+initTheme()
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { refetchOnWindowFocus: false, retry: false } },

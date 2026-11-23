@@ -186,6 +186,10 @@ export const en = {
   'admin.actionsFor': 'Actions for {email}',
   'admin.forbidden': 'Only admins can view this page.',
 
+  'theme.label': 'Theme',
+  'theme.light': 'Light',
+  'theme.dark': 'Dark',
+  'theme.system': 'System',
   'settings.title': 'Settings',
   'settings.password': 'Change password',
   'settings.passwordDone': 'Your password has been changed.',
