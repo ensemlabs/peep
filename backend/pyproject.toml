@@ -1,0 +1,35 @@
+[project]
+name = "ensemble-chat-backend"
+version = "0.1.0"
+description = "ensemble-chat API"
+requires-python = ">=3.13"
+dependencies = [
+  "fastapi==0.162.2",
+  "uvicorn[standard]==0.54.0",
+  "pydantic==2.14.3",
+  "pydantic-settings==2.16.2",
+  "python-multipart==0.0.33",
+  "sqlalchemy[asyncio]==2.1.8",
+  "asyncpg==0.32.0",
+  "alembic==1.20.1",
+  "argon2-cffi==25.1.0",
+  "boto3==1.43.127",
+  "openai==3.48.0",
+  "pillow==13.0.0",
+]
+
+[dependency-groups]
+dev = [
+  "pytest==9.2.0",
+  "pytest-asyncio==1.4.1",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+addopts = "-p no:cacheprovider"
+
+[tool.uv]
+package = false

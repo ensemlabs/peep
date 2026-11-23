@@ -1,0 +1,66 @@
+{
+ "steps": [
+  {
+   "after_ms": 200,
+   "op": "part",
+   "part": {
+    "id": "e-text",
+    "type": "text",
+    "text": ""
+   }
+  },
+  {
+   "after_ms": 0,
+   "op": "delta",
+   "part_id": "e-text",
+   "field": "text",
+   "text": "Deploying the build to staging... "
+  },
+  {
+   "after_ms": 200,
+   "op": "delta",
+   "part_id": "e-text",
+   "field": "text",
+   "text": "running the release tool."
+  },
+  {
+   "after_ms": 400,
+   "op": "part",
+   "part": {
+    "id": "e-tool",
+    "type": "tool",
+    "name": "deploy",
+    "input": {
+     "target": "staging",
+     "version": "1.4.2"
+    },
+    "output": null,
+    "files": [],
+    "status": "running"
+   }
+  },
+  {
+   "after_ms": 600,
+   "op": "delta",
+   "part_id": "e-tool",
+   "field": "output",
+   "text": "connecting to staging.internal:443\n"
+  },
+  {
+   "after_ms": 500,
+   "op": "delta",
+   "part_id": "e-tool",
+   "field": "output",
+   "text": "Error: connection refused"
+  },
+  {
+   "after_ms": 300,
+   "op": "update",
+   "part_id": "e-tool",
+   "patch": {
+    "status": "error"
+   }
+  }
+ ],
+ "error": "The deploy tool failed: connection refused (replay error demo)"
+}
