@@ -295,4 +295,4 @@ Makefile  .env.example
 
 ## License
 
-TBD. No license has been chosen yet and there is no `LICENSE` file.
+[MIT](LICENSE) © 2026 Ensemble Labs.
