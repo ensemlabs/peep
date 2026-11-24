@@ -402,3 +402,26 @@ async def test_parts_flushed_to_db_during_run(live_api, settings, monkeypatch):
 async def test_interrupted_runs_are_marked_on_startup():
     # covered in test_platform::test_streaming_messages_marked_interrupted; here: no registry leftovers
     assert not registry._runs and not registry._busy
+
+
+async def test_limited_user_has_single_active_run(live_api, settings, monkeypatch):
+    monkeypatch.setattr(settings, "replay_time_scale", 0.05)
+    limited = await create_user("lim@example.com")
+    await create_user("free@example.com")
+    await sql("UPDATE users SET token_limit = 1000000 WHERE id = :i", i=limited.id)
+    for email, second_status in (("lim@example.com", 409), ("free@example.com", 200)):
+        c = await live_login(live_api, email)
+        c1, c2 = await new_conversation(c), await new_conversation(c)
+        cm, resp = await start_stream(c, c1)
+        r = await c.post(f"/api/conversations/{c2}/messages", json={"content": "x", "model": "replay:error-demo"})
+        assert r.status_code == second_status, r.text
+        if second_status == 409:
+            assert r.json()["error"] == {"code": "run_in_progress", "message": "Another reply is still being generated"}
+        await resp.aread()
+        await cm.__aexit__(None, None, None)
+        await registry.wait_idle()
+        # the slot is released when the run ends
+        r = await c.post(f"/api/conversations/{c2}/messages", json={"content": "y", "model": "replay:error-demo"})
+        assert r.status_code == 200
+        await registry.wait_idle()
+        await c.aclose()

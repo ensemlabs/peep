@@ -42,6 +42,8 @@ class User(Base):
     __table_args__ = (
         CheckConstraint("role IN ('user','admin')", name="ck_users_role"),
         CheckConstraint("status IN ('pending','active','disabled')", name="ck_users_status"),
+        CheckConstraint("token_limit > 0", name="ck_users_token_limit"),
+        CheckConstraint("token_period IN ('day','month')", name="ck_users_token_period"),
         Index("uq_users_email_lower", text("lower(email)"), unique=True),
     )
 
@@ -56,6 +58,8 @@ class User(Base):
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     approved_by: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id", ondelete="SET NULL"))
+    token_limit: Mapped[int | None] = mapped_column(BigInteger)
+    token_period: Mapped[str] = mapped_column(String(8), default="month", server_default="month")
 
 
 class Session(Base):
@@ -175,3 +179,35 @@ class Plugin(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
     created_at: Mapped[datetime] = _ts()
     updated_at: Mapped[datetime] = _ts()
+
+
+class TokenUsage(Base):
+    __tablename__ = "token_usage"
+    __table_args__ = (
+        Index("ix_token_usage_user_created", "user_id", "created_at"),
+        Index("ix_token_usage_message", "message_id"),
+    )
+
+    id: Mapped[uuid.UUID] = _pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("users.id", ondelete="CASCADE"))
+    message_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("messages.id", ondelete="SET NULL"))
+    tokens: Mapped[int] = mapped_column(BigInteger)
+    created_at: Mapped[datetime] = _ts()
+
+
+class AdminAudit(Base):
+    __tablename__ = "admin_audit"
+    __table_args__ = (
+        Index("ix_admin_audit_created", text("created_at DESC")),
+        Index("ix_admin_audit_target", "target_id"),
+        Index("ix_admin_audit_actor", "actor_id"),
+    )
+
+    id: Mapped[uuid.UUID] = _pk()
+    actor_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id", ondelete="SET NULL"))
+    actor_email: Mapped[str] = mapped_column(String(254))
+    target_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)  # no FK: the row outlives a deleted target
+    target_email: Mapped[str | None] = mapped_column(String(254))
+    action: Mapped[str] = mapped_column(String(32))
+    detail: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, server_default=text("'{}'::jsonb"))
+    created_at: Mapped[datetime] = _ts()

@@ -16,6 +16,7 @@ from app.providers.replay_provider import ReplayProvider
 from app.schemas import iso
 from app.services import media
 from app.services import model_registry as mr
+from app.services.quota import used_tokens
 from app.services.runs import sse_response, RunState, ev, message_json, registry, stream_events
 
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
@@ -337,9 +338,14 @@ async def send_message(
     model = choose_model(body.model, conv)
     level = choose_level(model, body.reasoning)
 
+    if user.token_limit is not None and await used_tokens(db, user.id, user.token_period) >= user.token_limit:
+        raise ApiError(429, "quota_exceeded", "Token limit reached for this period")
+
     if not registry.reserve(conv.id):
         raise ApiError(409, "run_in_progress", "A reply is already being generated in this conversation")
     try:
+        if user.token_limit is not None and not registry.reserve_limited(conv.id, user.id):
+            raise ApiError(409, "run_in_progress", "Another reply is still being generated")
         unique_ids = list(dict.fromkeys(body.attachment_ids))
         files: list[File] = []
         if unique_ids:

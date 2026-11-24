@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 from tests.conftest import PASSWORD, create_user, login, new_email, register, sql
 
-USER_KEYS = {"id", "email", "display_name", "role", "status", "created_at", "last_login_at", "approved_at"}
+USER_KEYS = {"id", "email", "display_name", "role", "status", "created_at", "last_login_at", "approved_at", "token_limit", "token_period"}
 
 
 async def test_register_creates_pending_user_with_cookie(client):

@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models import User
 
@@ -23,6 +23,8 @@ def user_json(user: User) -> dict:
         "created_at": iso(user.created_at),
         "last_login_at": iso(user.last_login_at),
         "approved_at": iso(user.approved_at),
+        "token_limit": user.token_limit,
+        "token_period": user.token_period,
     }
 
 
@@ -53,6 +55,22 @@ class AdminPasswordBody(_Body):
 class AdminPatchBody(_Body):
     status: Literal["pending", "active", "disabled"] | None = None
     role: Literal["user", "admin"] | None = None
+    # null = remove the limit; omitted = leave unchanged (see model_fields_set)
+    token_limit: int | None = Field(None, ge=1, le=1_000_000_000_000)
+    token_period: Literal["day", "month"] | None = None
+
+
+class AdminCreateBody(_Body):
+    email: str
+    display_name: str
+    password: str
+    role: Literal["user", "admin"] = "user"
+    status: Literal["active", "pending"] = "active"
+
+
+class AdminBulkBody(_Body):
+    ids: list[uuid.UUID] = Field(min_length=1, max_length=100)
+    action: Literal["approve", "disable", "enable", "delete"]
 
 
 UserId = uuid.UUID

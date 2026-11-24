@@ -10,6 +10,7 @@ import boto3
 from botocore.client import Config
 from botocore.exceptions import BotoCoreError, ClientError
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import iterate_in_threadpool
 
 from app.config import get_settings
@@ -135,11 +136,17 @@ async def delete_prefix(prefix: str) -> None:
     await asyncio.to_thread(_delete_prefix_sync, prefix)
 
 
-async def delete_user_objects(user_id: uuid.UUID) -> None:
-    """Delete every stored object (files under u/<user>/ and their thumbnails) owned by the user."""
-    async with get_sessionmaker()() as db:
-        thumbs = (
-            await db.execute(select(File.thumb_key).where(File.user_id == user_id, File.thumb_key.is_not(None)))
-        ).scalars().all()
-    await delete_keys(list(thumbs))
+async def user_thumb_keys(db: AsyncSession, user_id: uuid.UUID) -> list[str]:
+    return list((await db.execute(select(File.thumb_key).where(File.user_id == user_id, File.thumb_key.is_not(None)))).scalars())
+
+
+async def delete_user_objects(user_id: uuid.UUID, thumbs: list[str] | None = None) -> None:
+    """Delete every stored object (files under u/<user>/ and their thumbnails) owned by the user.
+
+    Pass `thumbs` (from user_thumb_keys) when the file rows are already gone.
+    """
+    if thumbs is None:
+        async with get_sessionmaker()() as db:
+            thumbs = await user_thumb_keys(db, user_id)
+    await delete_keys(thumbs)
     await delete_prefix(f"u/{user_id}/")

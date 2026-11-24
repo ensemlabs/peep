@@ -10,7 +10,7 @@ from app.config import get_settings
 from app.deps import current_session, current_user, get_db
 from app.errors import ApiError
 from app.models import Session, User
-from app.schemas import ChangePasswordBody, LoginBody, RegisterBody, user_json
+from app.schemas import ChangePasswordBody, LoginBody, RegisterBody, iso, user_json
 from app.security import (
     PASSWORD_MAX,
     client_ip,
@@ -24,6 +24,7 @@ from app.security import (
     verify_password,
 )
 from app.services import throttle
+from app.services.quota import period_bounds, used_tokens
 from app.services.sessions import COOKIE_NAME, clear_session_cookie, create_session, revoke_user_sessions, set_session_cookie
 
 log = logging.getLogger(__name__)
@@ -119,8 +120,17 @@ async def logout(request: Request, db: AsyncSession = Depends(get_db)) -> Respon
 
 
 @router.get("/me")
-async def me(user: User = Depends(current_user)):
-    return {"user": user_json(user)}
+async def me(user: User = Depends(current_user), db: AsyncSession = Depends(get_db)):
+    _, resets_at = period_bounds(user.token_period)
+    return {
+        "user": user_json(user),
+        "quota": {
+            "limit": user.token_limit,
+            "period": user.token_period,
+            "used": await used_tokens(db, user.id, user.token_period),
+            "resets_at": iso(resets_at),
+        },
+    }
 
 
 @router.post("/password", status_code=204)

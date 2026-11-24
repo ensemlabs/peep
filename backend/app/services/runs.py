@@ -15,6 +15,7 @@ from app.db import get_sessionmaker
 from app.models import Conversation, Message
 from app.providers.base import Provider, ProviderError, RunContext, new_id
 from app.schemas import iso
+from app.services.quota import record_usage
 from app.services.usage import estimate_usage
 
 log = logging.getLogger(__name__)
@@ -255,6 +256,9 @@ class RunState:
                 await db.execute(
                     update(Conversation).where(Conversation.id == self.conversation_id).values(updated_at=datetime.now(UTC))
                 )
+                total = (self.usage or {}).get("total_tokens") or 0
+                if total > 0:
+                    record_usage(db, self.user_id, self.message_id, int(total))
                 await db.commit()
         except Exception:
             log.exception("final persist failed for message %s", self.message_id)
@@ -269,6 +273,7 @@ class RunRegistry:
     def __init__(self) -> None:
         self._runs: dict[uuid.UUID, RunState] = {}
         self._busy: set[uuid.UUID] = set()
+        self._limited: dict[uuid.UUID, uuid.UUID] = {}  # conversation -> user, for users with a token limit
 
     def is_busy(self, conversation_id: uuid.UUID) -> bool:
         return conversation_id in self._busy
@@ -280,8 +285,16 @@ class RunRegistry:
         self._busy.add(conversation_id)
         return True
 
+    def reserve_limited(self, conversation_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+        """Claim the user's single run slot (quota is only recorded when a run ends)."""
+        if user_id in self._limited.values():
+            return False
+        self._limited[conversation_id] = user_id
+        return True
+
     def release(self, conversation_id: uuid.UUID) -> None:
         self._busy.discard(conversation_id)
+        self._limited.pop(conversation_id, None)
 
     def get(self, message_id: uuid.UUID) -> RunState | None:
         return self._runs.get(message_id)
@@ -311,7 +324,7 @@ class RunRegistry:
         await state.ensure_usage(status)
         await state.finish(status, error)
         self._runs.pop(state.message_id, None)
-        self._busy.discard(state.conversation_id)
+        self.release(state.conversation_id)
 
     async def stop(self, message_id: uuid.UUID) -> bool:
         state = self._runs.get(message_id)
