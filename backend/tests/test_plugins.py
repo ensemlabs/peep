@@ -127,12 +127,12 @@ async def test_startup_headerless_plugin_without_key_only_warns(settings, monkey
     assert "SECRETS_KEY is not set" in caplog.text
 
 
-async def test_startup_invalid_key_without_encrypted_data_warns_accurately(settings, monkeypatch, caplog):
+async def test_startup_invalid_key_fails_fast(settings, monkeypatch):
     from app.services.startup import check_secrets
 
     monkeypatch.setattr(settings, "secrets_key", "not-a-fernet-key")
-    await check_secrets()
-    assert "not a valid Fernet key" in caplog.text and "Plugins are in use" not in caplog.text
+    with pytest.raises(RuntimeError, match="not a valid Fernet key"):
+        await check_secrets()
 
 
 async def test_startup_encrypted_plugin_without_key_fails_clearly(settings, monkeypatch):

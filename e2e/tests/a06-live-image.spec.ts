@@ -1,22 +1,23 @@
 import {
-  expect, fetchConversation, flattenParts, GEMINI_TIMEOUT, lastAssistant, selectModel, sendPrompt, sha256, test,
+  expect, fetchConversation, flattenParts, LIVE_LLM_ENABLED, LIVE_MODEL, LIVE_SKIP_MESSAGE, LIVE_TIMEOUT, lastAssistant, selectModel, sendPrompt, sha256, test,
   conversationIdFrom, setThinking,
 } from './helpers'
 
-test.describe.configure({ retries: 1, timeout: GEMINI_TIMEOUT })
+test.skip(!LIVE_LLM_ENABLED, LIVE_SKIP_MESSAGE)
+test.describe.configure({ retries: 1, timeout: LIVE_TIMEOUT })
 
-test('A6 @gemini: generated image in a gallery, no base64 in DOM, lightbox at original size, download == content', async ({ page, approved }) => {
+test('A6 @live-llm: generated image in a gallery, no base64 in DOM, lightbox at original size, download == content', async ({ page, approved }) => {
   void approved
   await page.goto('/')
-  await selectModel(page, 'gemini-pro')
+  await selectModel(page, LIVE_MODEL)
   await setThinking(page, 'off')
   await sendPrompt(page, 'Generate an image of a red apple on a white table.')
 
   const msg = lastAssistant(page)
-  await expect(msg).toHaveAttribute('data-status', /complete|error|stopped/, { timeout: GEMINI_TIMEOUT - 30_000 })
-  await expect(msg, 'Gemini run did not complete').toHaveAttribute('data-status', 'complete')
+  await expect(msg).toHaveAttribute('data-status', /complete|error|stopped/, { timeout: LIVE_TIMEOUT - 30_000 })
+  await expect(msg, 'Live model run did not complete').toHaveAttribute('data-status', 'complete')
   const gallery = msg.getByTestId('gallery')
-  expect(await gallery.count(), 'no image returned (Gemini refusal / text-only answer?): ' + (await msg.innerText()).slice(0, 300)).toBeGreaterThan(0)
+  expect(await gallery.count(), 'no image returned (model refusal / text-only answer?): ' + (await msg.innerText()).slice(0, 300)).toBeGreaterThan(0)
   await expect(gallery.first()).toBeVisible()
   const item = gallery.first().getByTestId('gallery-item').first()
   await expect(item.locator('img')).toBeVisible()

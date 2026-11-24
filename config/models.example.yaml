@@ -175,26 +175,3 @@ providers:
   #         levels:
   #           - {id: off, label: {en: Off, vi: Tắt}, patch: {extra_body: {chat_template_kwargs: {enable_thinking: false}}}}
   #           - {id: on,  label: {en: On,  vi: Bật}, patch: {extra_body: {chat_template_kwargs: {enable_thinking: true}}}}
-
-  # ------------------------------------------------------------------------------------------------
-  # dev/test: llm-proxy (free local proxy)
-  # Only for development and tests: no API cost, can also generate images and video.
-  # Join its docker network with docker-compose.gemini.yml (make up GEMINI=1).
-  # ------------------------------------------------------------------------------------------------
-  # - id: llm-proxy
-  #   base_url: http://llm-proxy-ts:8000/v1
-  #   api_key_env: LLM_API_KEY
-  #   usage: estimate                       # it reports word counts, not tokens
-  #   models:
-  #     - id: gemini-pro
-  #       label: Gemini Pro
-  #       vision: true
-  #       context_window: 1000000
-  #       image_tokens: 258
-  #       thinking:
-  #         default: off
-  #         returns_text: true
-  #         read_from: {delta_fields: [reasoning_content, reasoning]}
-  #         levels:                         # only reasoning_effort: high turns thinking on
-  #           - {id: off,  label: {en: Off,  vi: Tắt}, patch: {}}
-  #           - {id: high, label: {en: High, vi: Cao}, patch: {reasoning_effort: high}}

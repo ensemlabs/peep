@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import and_, exists, func, literal, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.db import get_db
 from app.deps import active_user
 from app.errors import ApiError
@@ -344,8 +345,10 @@ async def send_message(
     if not registry.reserve(conv.id):
         raise ApiError(409, "run_in_progress", "A reply is already being generated in this conversation")
     try:
-        if user.token_limit is not None and not registry.reserve_limited(conv.id, user.id):
-            raise ApiError(409, "run_in_progress", "Another reply is still being generated")
+        # Users with a token limit get one slot (usage is only recorded when a run ends); everyone else MAX_RUNS_PER_USER.
+        max_runs = 1 if user.token_limit is not None else get_settings().max_runs_per_user
+        if not registry.reserve_user(conv.id, user.id, max_runs):
+            raise ApiError(409, "too_many_runs", "Too many replies are running; wait for one to finish")
         unique_ids = list(dict.fromkeys(body.attachment_ids))
         files: list[File] = []
         if unique_ids:

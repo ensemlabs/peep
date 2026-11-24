@@ -12,7 +12,7 @@ export default defineConfig({
   outputDir: 'test-results',
   timeout: 60_000,
   expect: { timeout: 10_000 },
-  // Gemini specs set retries: 1 / timeout 4 min themselves (see `geminiSuite` in tests/helpers.ts).
+  // Live-model specs (@live-llm) set their own retries / timeout (LIVE_TIMEOUT in tests/helpers.ts) and skip without E2E_LLM_BASE_URL.
   retries: 0,
   workers: 2,
   reporter: [

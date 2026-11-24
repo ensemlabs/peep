@@ -9,7 +9,10 @@ from app.config import get_settings
 from app.models import Session, User
 from app.security import new_session_token, token_digest
 
-COOKIE_NAME = "ec_session"
+
+def cookie_name() -> str:
+    """`__Host-` prefix when Secure is on: the browser then requires Secure, Path=/ and no Domain."""
+    return "__Host-ec_session" if get_settings().cookie_secure_on else "ec_session"
 
 
 def _now() -> datetime:
@@ -19,19 +22,19 @@ def _now() -> datetime:
 def set_session_cookie(response: Response, token: str, max_age: int | None = None) -> None:
     s = get_settings()
     response.set_cookie(
-        COOKIE_NAME,
+        cookie_name(),
         token,
         max_age=max_age if max_age is not None else s.session_idle_days * 86400,
         httponly=True,
         samesite="lax",
-        secure=s.cookie_secure,
+        secure=s.cookie_secure_on,
         path="/",
     )
 
 
 def clear_session_cookie(response: Response) -> None:
     s = get_settings()
-    response.delete_cookie(COOKIE_NAME, path="/", httponly=True, samesite="lax", secure=s.cookie_secure)
+    response.delete_cookie(cookie_name(), path="/", httponly=True, samesite="lax", secure=s.cookie_secure_on)
 
 
 async def create_session(db: AsyncSession, user: User, ip: str | None, user_agent: str | None) -> str:

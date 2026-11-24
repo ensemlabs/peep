@@ -72,6 +72,7 @@ export const vi = {
   'error.forbidden': 'Bạn không có quyền thực hiện thao tác này.',
   'error.unauthenticated': 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
   'error.run_in_progress': 'Cuộc trò chuyện này đang tạo phản hồi. Hãy dừng hoặc đợi hoàn tất.',
+  'error.too_many_runs': 'Đang tạo quá nhiều phản hồi cùng lúc. Hãy đợi một phản hồi hoàn tất.',
   'error.invalid_model': 'Mô hình này hiện không khả dụng.',
   'error.empty_message': 'Hãy nhập tin nhắn hoặc đính kèm tệp.',
   'error.invalid_attachment': 'Có tệp đính kèm không hợp lệ. Hãy xóa và thử lại.',

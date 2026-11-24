@@ -101,17 +101,14 @@ You need Docker with Compose v2.
 
 ```bash
 git clone git@github.com:ensemlabs/peep.git && cd peep
-cp .env.example .env
-cp config/models.example.yaml config/models.yaml
+make env
 ```
 
-1. Edit `.env`: replace every `change-me` (database, MinIO, `ADMIN_EMAIL`, `ADMIN_PASSWORD`) and set `SECRETS_KEY`:
-
-   ```bash
-   python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-   ```
-
-   Keep that key: without it, stored plugin headers cannot be read.
+1. `make env` creates `.env` with freshly generated secrets (database, MinIO, admin password, `SECRETS_KEY`) and
+   `config/models.yaml` from the example. It never overwrites an existing `.env`. The admin login is `ADMIN_EMAIL` and
+   `ADMIN_PASSWORD` in `.env`; set `ADMIN_EMAIL` to your own address first. Keep `SECRETS_KEY`: without it, stored
+   plugin headers cannot be read. In production Peep refuses to start while a password still holds the `change-me`
+   placeholder from `.env.example`.
 2. Edit `config/models.yaml`: point `active` at a model of your provider (the file has presets to copy), and put the
    provider's API key in `.env` under the name given by `api_key_env`.
 3. Start it:
@@ -167,7 +164,7 @@ The variables you will most likely touch:
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | empty | First admin, created on startup |
 | `SECRETS_KEY` | empty | Fernet key for plugin secrets |
 | `APP_ORIGINS` | `http://localhost:8090,http://127.0.0.1:8090` | Allowed origins; add your public URL |
-| `COOKIE_SECURE` | `false` | Set `true` behind HTTPS |
+| `COOKIE_SECURE` | `auto` | `auto`: Secure cookie (named `__Host-ec_session`) when every `APP_ORIGINS` entry is https; or `true` / `false` |
 | `WEB_PORT` | `8090` | Host port, bound to `127.0.0.1` |
 | `MAX_UPLOAD_MB` | `200` | Upload limit |
 | `MODELS_CONFIG` | `/app/config/models.yaml` | Models file inside the container |
@@ -176,13 +173,13 @@ Everything else (sessions, login throttling, S3, replay): [docs/configuration.md
 
 ### Running behind a reverse proxy
 
-Peep serves plain HTTP. For a public site, terminate TLS in a proxy (Caddy, Traefik, nginx), set `COOKIE_SECURE=true`,
+Peep serves plain HTTP. For a public site, terminate TLS in a proxy (Caddy, Traefik, nginx), set `APP_ORIGINS` (https) or `COOKIE_SECURE=true`,
 add the public URL to `APP_ORIGINS`, and set `TRUSTED_PROXIES` to the proxy's address so the real client IP is used
 (it is empty by default: `X-Forwarded-For` is ignored). Disable proxy buffering for `/api` so SSE streams. See
 [docs/architecture.md](docs/architecture.md#running-behind-a-reverse-proxy).
 
 Internal names keep the project's earlier name: the Docker Compose project, database and bucket are `ensemble-chat`
-/ `ensemble_chat`, the session cookie is `ec_session`, and browser settings use `ec_*` keys in `localStorage`.
+/ `ensemble_chat`, the session cookie is `ec_session` (`__Host-ec_session` over https), and browser settings use `ec_*` keys in `localStorage`.
 
 ## Architecture
 
@@ -219,6 +216,9 @@ Details and request flow: [docs/architecture.md](docs/architecture.md). HTTP and
 - Plugin header values are encrypted at rest (Fernet) and never returned. Peep never calls plugin URLs or runs skill
   code.
 - Never commit `.env` or `config/models.yaml`.
+- Known limits: registration tells whether an email is already registered (accepted trade-off for a self-hosted app).
+  The app connects to Postgres and MinIO with their admin credentials; for production create least-privilege users
+  (one database owner, one bucket-scoped S3 key). The KaTeX advisory affects only `trust` mode, which Peep keeps off.
 
 Full list and numbers: [docs/configuration.md](docs/configuration.md) and [docs/api.md](docs/api.md#auth).
 

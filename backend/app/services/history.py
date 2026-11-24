@@ -17,6 +17,7 @@ from app.services import storage
 
 MAX_IMAGES = 16
 MAX_IMAGE_BYTES = 20 * 1024 * 1024
+MAX_TOTAL_IMAGE_BYTES = 40 * 1024 * 1024  # raw bytes of all images sent in one request
 
 
 def _human_size(n: int) -> str:
@@ -43,9 +44,11 @@ class Turns:
 def split_attachments(files: list[File]) -> tuple[list[File], list[str]]:
     images: list[File] = []
     lines: list[str] = []
+    total = 0
     for f in files:
-        if f.kind == "image" and len(images) < MAX_IMAGES and f.size <= MAX_IMAGE_BYTES:
+        if f.kind == "image" and len(images) < MAX_IMAGES and f.size <= MAX_IMAGE_BYTES and total + f.size <= MAX_TOTAL_IMAGE_BYTES:
             images.append(f)
+            total += f.size
         else:
             lines.append(attachment_line(f))
     return images, lines

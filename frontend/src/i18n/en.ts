@@ -70,6 +70,7 @@ export const en = {
   'error.forbidden': "You don't have permission to do that.",
   'error.unauthenticated': 'Your session has expired. Please log in again.',
   'error.run_in_progress': 'A response is still being generated in this conversation. Stop it or wait.',
+  'error.too_many_runs': 'Too many responses are being generated at once. Wait for one to finish.',
   'error.invalid_model': 'This model is not available.',
   'error.empty_message': 'Enter a message or attach a file.',
   'error.invalid_attachment': 'One of the attachments is not valid. Remove it and try again.',

@@ -102,7 +102,7 @@ tokens per period (a whole number from 1 to 1,000,000,000,000) and the period, *
 - The limit is soft. Peep checks it only before a message is sent: if the tokens used in the period have reached the
   limit, the message is refused. A reply that has already started can run past the limit.
 - A user with a limit can have only one reply running at a time (in any conversation), so parallel chats cannot
-  overshoot it. Users without a limit are not restricted.
+  overshoot it. Other users can have up to `MAX_RUNS_PER_USER` (default 3) replies running at once.
 - Usage is kept in its own ledger, so deleting conversations does not give tokens back. It is deleted only with the
   user.
 - The **Tokens** column shows the usage in the user's current period, with a bar when there is a limit (amber from

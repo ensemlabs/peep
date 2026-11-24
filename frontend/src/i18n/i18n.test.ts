@@ -36,7 +36,7 @@ describe('errorMessage', () => {
   const codes = [
     'invalid_credentials', 'account_disabled', 'account_pending', 'email_taken', 'weak_password', 'invalid_email',
     'invalid_display_name', 'invalid_current_password', 'file_too_large', 'unsupported_type', 'cannot_modify_self',
-    'bad_origin', 'run_in_progress', 'invalid_model', 'empty_message', 'invalid_attachment', 'empty_file', 'invalid_request', 'forbidden', 'unauthenticated',
+    'bad_origin', 'run_in_progress', 'too_many_runs', 'invalid_model', 'empty_message', 'invalid_attachment', 'empty_file', 'invalid_request', 'forbidden', 'unauthenticated',
   ]
   it.each(codes)('maps %s to a translated message, not backend text', (code) => {
     const msg = errorMessage(new ApiError(code, 400, 'RAW BACKEND ENGLISH'), t)

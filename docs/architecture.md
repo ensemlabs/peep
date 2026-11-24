@@ -154,7 +154,7 @@ without `thinking`, `thinking.default` when the client sent nothing, else the re
 
 - History: `load_turns()` is the single source for both the run and `GET /api/context`. It contains the text of
   earlier user and assistant messages (the assistant's root `text` parts; thinking, tools and images are not
-  replayed), then the last user message. Its images (at most 16, each at most 20 MB) become `image_url` data URIs.
+  replayed), then the last user message. Its images (at most 16, each at most 20 MB, 40 MB in total; extra ones are listed as text lines) become `image_url` data URIs.
   Other attachments become a line `[Attached file: name (mime, size)]`. Images of earlier turns are not re-sent.
 - Stream mapping: the first non-empty delta field among the model's `read_from.delta_fields` (default
   `reasoning_content`, `reasoning`) goes to a `thinking` part (closed with `done` when the first answer text arrives
@@ -279,7 +279,8 @@ message and the last non-empty message of each conversation, so it needs no extr
 - Checking: `POST /api/conversations/{id}/messages` sums the user's rows in the current window before reserving the
   run and answers 429 `quota_exceeded` when `token_limit` is set and reached. It is a soft limit: a run in progress is
   never cut. Because usage is booked only when a run ends, a user with a `token_limit` also gets a single run slot
-  (`RunRegistry.reserve_limited`): a second send while one is running answers 409 `run_in_progress`.
+  (`RunRegistry.reserve_user`): a second send while one is running answers 409 `too_many_runs`. Everyone else is capped at
+  `MAX_RUNS_PER_USER` (3) concurrent runs.
   `GET /api/auth/me` returns the same sum as `quota`.
 - Deleting users (single or bulk) commits the DB delete and its audit rows first, then removes the user's MinIO
   objects best-effort; a failed object delete is logged and leaves only an orphaned object.
@@ -325,12 +326,14 @@ The API lifespan (`app/main.py`) runs these in order, and does not serve request
 
 0. `get_registry()`: load and validate the models file, so a bad config fails fast.
 1. `alembic upgrade head` (in a worker thread, because Alembic's async environment needs its own event loop).
-2. `check_secrets()`: if `SECRETS_KEY` is set, or plugins already exist, the key must be a valid Fernet key, otherwise
+2. `check_secrets()`: if `SECRETS_KEY` is set (valid or not), or plugins already exist, the key must be a valid Fernet key, otherwise
    startup fails. With no key and no plugins it only logs a warning (saving plugin headers is then refused).
 3. `ensure_bucket()`: create the S3 bucket if missing, retrying with backoff for up to `S3_STARTUP_TIMEOUT_SECONDS`
    (MinIO may still be starting).
 4. `seed_admin()`: if `ADMIN_EMAIL` and `ADMIN_PASSWORD` are set, create an active admin (display name "Admin"), or
-   promote an existing user with that email to active admin without touching its password.
+   promote an existing user with that email to active admin only if `ADMIN_PASSWORD` matches that account's password
+   (audit row with actor `system`); a non-matching account is left untouched and an error is logged.
+   Before all this, in production, startup is refused while placeholder `change-me` secrets remain.
 5. `mark_interrupted_messages()`: every message still `streaming` becomes `error` with the error `interrupted`
    (their runs died with the previous process).
 
@@ -343,4 +346,11 @@ The compose healthcheck of `app` calls `GET /api/health`, which runs `SELECT 1`.
 - One uvicorn worker (`--workers 1`, `--no-proxy-headers`), because runs, subscribers and the busy set are in process
   memory. See Limitations in the [README](../README.md#roadmap-and-limitations).
 - Only the `app` container is published, on `127.0.0.1`. It terminates plain HTTP: put a TLS proxy in front for anything public.
+- Known security trade-offs:
+  - Registration answers 409 when an email is already registered, so it reveals which emails exist. Accepted for a
+    self-hosted app; the login endpoint itself does not reveal it.
+  - The app uses the Postgres and MinIO admin credentials from `.env`. For production, create a database role that owns
+    only the Peep database and an S3 key limited to the bucket.
+  - The frontend depends on KaTeX, which has a low-severity advisory in `trust` mode; Peep renders math with `trust`
+    disabled, so it does not apply.
 - Storage code is plain S3 (boto3, path-style addressing, region `us-east-1`), so the MinIO image can be replaced.

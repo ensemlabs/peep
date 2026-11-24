@@ -18,6 +18,6 @@ Only the latest release and the `main` branch receive security fixes.
 ## Scope
 
 Peep is meant to be self-hosted. Running it safely also depends on your setup: keep `.env` and `config/models.yaml`
-private, use strong secrets, set `COOKIE_SECURE=true` and put it behind HTTPS. Weak configuration of your own
+private, use strong secrets, serve it over HTTPS (with an `https` `APP_ORIGINS` the session cookie becomes `Secure`) and run Postgres and MinIO with least-privilege credentials. Weak configuration of your own
 deployment is not a vulnerability in Peep. The built-in protections are listed in the Security section of the
 [README](README.md#security).

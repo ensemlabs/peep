@@ -251,6 +251,9 @@ async def test_disposition_rules(make_client):
         assert cd.startswith("attachment;") and ctype == "application/octet-stream"
         assert r.headers["x-content-type-options"] == "nosniff"
     assert (await disp(py))[0].startswith("attachment;")
+    for meta, claimed in ((py, "text/x-python"), (uni, "text/plain")):
+        _, ctype, _ = await disp(meta)
+        assert ctype == "application/octet-stream" and meta["mime"] == claimed  # original mime stays in the metadata
     cd, _, _ = await disp(uni, download=1)
     assert "filename*=UTF-8''t%E1%BB%87p%20tin.txt" in cd and 'filename="t_p tin.txt"' in cd
     assert svg["kind"] == "file" and html["kind"] == "file"

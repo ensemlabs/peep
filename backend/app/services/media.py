@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import File
 from app.services import storage
 
-Image.MAX_IMAGE_PIXELS = 100_000_000
+Image.MAX_IMAGE_PIXELS = 40_000_000  # decompression-bomb guard: _probe_image turns PIL's warning (above this) into a rejection
 THUMB_MAX = 768
 
 VIDEO_EXT = {"mp4", "webm", "mov", "mkv", "ogv", "m4v"}

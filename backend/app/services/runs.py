@@ -75,6 +75,7 @@ class RunState:
         self.usage: dict[str, Any] | None = None
         self.usage_hint: dict[str, Any] = {"input_tokens": 0, "ratio": 1.0}  # set by the provider for estimates
         self.task: asyncio.Task | None = None
+        self.finalizing = False  # the provider is done; stop() no longer cancels (the final write must complete)
         self._index: dict[str, dict[str, Any]] = {}
         self._subscribers: set[asyncio.Queue[Event | None]] = set()
         self._dirty = False
@@ -273,7 +274,7 @@ class RunRegistry:
     def __init__(self) -> None:
         self._runs: dict[uuid.UUID, RunState] = {}
         self._busy: set[uuid.UUID] = set()
-        self._limited: dict[uuid.UUID, uuid.UUID] = {}  # conversation -> user, for users with a token limit
+        self._owners: dict[uuid.UUID, uuid.UUID] = {}  # conversation -> user, for the per-user run cap
 
     def is_busy(self, conversation_id: uuid.UUID) -> bool:
         return conversation_id in self._busy
@@ -285,16 +286,16 @@ class RunRegistry:
         self._busy.add(conversation_id)
         return True
 
-    def reserve_limited(self, conversation_id: uuid.UUID, user_id: uuid.UUID) -> bool:
-        """Claim the user's single run slot (quota is only recorded when a run ends)."""
-        if user_id in self._limited.values():
+    def reserve_user(self, conversation_id: uuid.UUID, user_id: uuid.UUID, max_runs: int) -> bool:
+        """Claim one of the user's `max_runs` concurrent run slots (quota is only recorded when a run ends)."""
+        if sum(1 for u in self._owners.values() if u == user_id) >= max_runs:
             return False
-        self._limited[conversation_id] = user_id
+        self._owners[conversation_id] = user_id
         return True
 
     def release(self, conversation_id: uuid.UUID) -> None:
         self._busy.discard(conversation_id)
-        self._limited.pop(conversation_id, None)
+        self._owners.pop(conversation_id, None)
 
     def get(self, message_id: uuid.UUID) -> RunState | None:
         return self._runs.get(message_id)
@@ -317,20 +318,29 @@ class RunRegistry:
             status, error = "error", "Internal error"
         finally:
             flusher.cancel()
+        state.finalizing = True  # no await since the provider ended, so a second stop() cannot slip in
+        try:
+            # Shielded: a late cancel (shutdown) must not abandon the final DB write halfway.
+            await asyncio.shield(self._finalize(state, status, error))
+        finally:
+            self._runs.pop(state.message_id, None)
+            self.release(state.conversation_id)
+
+    @staticmethod
+    async def _finalize(state: RunState, status: str, error: str | None) -> None:
         try:
             await state.close_running(status)
         except Exception:
             log.exception("closing parts failed")
         await state.ensure_usage(status)
         await state.finish(status, error)
-        self._runs.pop(state.message_id, None)
-        self.release(state.conversation_id)
 
     async def stop(self, message_id: uuid.UUID) -> bool:
         state = self._runs.get(message_id)
         if state is None or state.task is None:
             return False
-        state.task.cancel()
+        if not state.finalizing:
+            state.task.cancel()
         return True
 
     async def wait_idle(self, timeout: float = 30) -> None:

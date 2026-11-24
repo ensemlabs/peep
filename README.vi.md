@@ -103,17 +103,14 @@ Bạn cần Docker với Compose v2.
 
 ```bash
 git clone git@github.com:ensemlabs/peep.git && cd peep
-cp .env.example .env
-cp config/models.example.yaml config/models.yaml
+make env
 ```
 
-1. Sửa `.env`: thay mọi giá trị `change-me` (cơ sở dữ liệu, MinIO, `ADMIN_EMAIL`, `ADMIN_PASSWORD`) và đặt `SECRETS_KEY`:
-
-   ```bash
-   python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-   ```
-
-   Hãy giữ khoá này: mất khoá thì không đọc lại được các header plugin đã lưu.
+1. `make env` tạo `.env` với các khoá bí mật sinh ngẫu nhiên (cơ sở dữ liệu, MinIO, mật khẩu admin, `SECRETS_KEY`) và
+   `config/models.yaml` từ file mẫu; không bao giờ ghi đè `.env` có sẵn. Tài khoản admin là `ADMIN_EMAIL` và
+   `ADMIN_PASSWORD` trong `.env` (hãy đổi `ADMIN_EMAIL` thành địa chỉ của bạn trước). Hãy giữ `SECRETS_KEY`: mất khoá
+   thì không đọc lại được các header plugin đã lưu. Ở chế độ production, Peep từ chối khởi động nếu còn mật khẩu
+   mang giá trị mẫu `change-me`.
 2. Sửa `config/models.yaml`: trỏ `active` tới một model của nhà cung cấp bạn dùng (trong file có sẵn các mẫu để chép),
    rồi điền API key của nhà cung cấp vào `.env` theo đúng tên biến ghi ở `api_key_env`.
 3. Khởi động:
@@ -170,7 +167,7 @@ Các biến bạn có thể sẽ cần chỉnh:
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | trống | Admin đầu tiên, tạo khi khởi động |
 | `SECRETS_KEY` | trống | Khoá Fernet cho thông tin bí mật của plugin |
 | `APP_ORIGINS` | `http://localhost:8090,http://127.0.0.1:8090` | Các origin được phép; thêm địa chỉ công khai của bạn |
-| `COOKIE_SECURE` | `false` | Đặt `true` khi chạy sau HTTPS |
+| `COOKIE_SECURE` | `auto` | `auto`: cookie Secure (tên `__Host-ec_session`) khi mọi mục trong `APP_ORIGINS` là https; hoặc `true` / `false` |
 | `WEB_PORT` | `8090` | Cổng trên máy chủ, chỉ mở ở `127.0.0.1` |
 | `MAX_UPLOAD_MB` | `200` | Giới hạn dung lượng tải lên |
 | `MODELS_CONFIG` | `/app/config/models.yaml` | Đường dẫn file model trong container |
@@ -181,12 +178,12 @@ Phần còn lại (phiên đăng nhập, giới hạn đăng nhập, S3, replay)
 ### Chạy sau reverse proxy
 
 Peep phục vụ HTTP thường. Với site công khai, hãy kết thúc TLS ở một proxy (Caddy, Traefik, nginx), đặt
-`COOKIE_SECURE=true`, thêm URL công khai vào `APP_ORIGINS` và đặt `TRUSTED_PROXIES` là địa chỉ của proxy để lấy đúng IP
+`APP_ORIGINS` (https) hoặc `COOKIE_SECURE=true`, thêm URL công khai vào `APP_ORIGINS` và đặt `TRUSTED_PROXIES` là địa chỉ của proxy để lấy đúng IP
 client (mặc định để trống: bỏ qua `X-Forwarded-For`). Tắt buffering của proxy cho `/api` để SSE chảy liên tục. Xem
 [docs/architecture.md](docs/architecture.md#running-behind-a-reverse-proxy).
 
 Một số tên nội bộ vẫn giữ tên cũ của dự án: project Docker Compose, cơ sở dữ liệu và bucket là `ensemble-chat` /
-`ensemble_chat`, cookie phiên là `ec_session`, còn cài đặt trên trình duyệt lưu trong `localStorage` với khoá `ec_*`.
+`ensemble_chat`, cookie phiên là `ec_session` (`__Host-ec_session` qua https), còn cài đặt trên trình duyệt lưu trong `localStorage` với khoá `ec_*`.
 
 ## Kiến trúc
 

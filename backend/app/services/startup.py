@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from pathlib import Path
 
 from alembic import command
@@ -8,8 +9,8 @@ from sqlalchemy import func, select, update
 
 from app.config import get_settings
 from app.db import get_sessionmaker
-from app.models import Message, User
-from app.security import hash_password, normalize_email
+from app.models import AdminAudit, Message, User
+from app.security import hash_password, normalize_email, verify_password
 
 log = logging.getLogger(__name__)
 
@@ -45,11 +46,46 @@ async def seed_admin() -> None:
                 )
             )
             log.info("seeded admin user %s", email)
-        elif user.role != "admin" or user.status != "active":
-            user.role = "admin"
-            user.status = "active"
+        elif user.role == "admin" and user.status == "active":
+            return  # nothing to do, and no reason to check the password
+        elif not await verify_password(user.password_hash, s.admin_password):
+            # Anyone can register ADMIN_EMAIL before the first start: never hand them the admin role.
+            log.error("an account for %s exists and ADMIN_PASSWORD does not match it: left untouched", email)
+        else:
+            # The operator proves ownership with the password (recovery path for a demoted or disabled admin).
+            # Same audit actions as the admin UI, so the entries render and filter there.
+            for action, field, new in (("user.role", "role", "admin"), ("user.status", "status", "active")):
+                old = getattr(user, field)
+                if old != new:
+                    db.add(
+                        AdminAudit(
+                            actor_id=None,
+                            actor_email="system",
+                            target_id=user.id,
+                            target_email=user.email,
+                            action=action,
+                            detail={"from": old, "to": new, "via": "seed"},
+                        )
+                    )
+                    setattr(user, field, new)
             log.info("promoted existing user %s to active admin", email)
         await db.commit()
+
+
+DEFAULT_SECRET_VARS = ("ADMIN_PASSWORD", "POSTGRES_PASSWORD", "MINIO_ROOT_PASSWORD", "S3_SECRET_KEY")
+
+
+def check_default_credentials() -> None:
+    """In production, refuse to start with the placeholder values from .env.example (names only in the message)."""
+    if get_settings().app_env != "production":
+        return
+    bad = [n for n in DEFAULT_SECRET_VARS if "change-me" in os.environ.get(n, "")]
+    if bad:
+        raise RuntimeError(
+            "Refusing to start: these variables still hold the example placeholder 'change-me': "
+            + ", ".join(bad)
+            + ". Set real secrets in .env (make env generates them for a new .env)."
+        )
 
 
 async def mark_interrupted_messages() -> None:
@@ -97,6 +133,7 @@ async def check_secrets() -> None:
                 "SECRETS_KEY cannot decrypt the stored plugin header values (wrong key?). "
                 "Restore the key that was used when the plugins were saved."
             )
+    elif key_problem and key_set:
+        raise RuntimeError("SECRETS_KEY is set but is not a valid Fernet key (32 url-safe base64-encoded bytes)")
     elif key_problem:
-        reason = "SECRETS_KEY is not set" if not key_set else "SECRETS_KEY is not a valid Fernet key"
-        log.warning("%s: saving plugin headers is disabled until it is configured", reason)
+        log.warning("SECRETS_KEY is not set: saving plugin headers is disabled until it is configured")
