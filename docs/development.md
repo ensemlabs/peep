@@ -33,6 +33,26 @@ To develop against the proxy, uncomment the `llm-proxy` provider at the end of `
 - `make test-fe` runs `npm ci && npm test && npm run build` (vitest, `tsc --noEmit`, Vite build) in a
   `node:24.15.0-alpine` container.
 
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on pushes to `main` and on pull requests: a `backend` job (`make test-be`, real Postgres
+and MinIO through compose) and a `frontend` job (`make test-fe`). The example env values are enough for the tests
+(they generate their own Fernet key), so CI needs no secrets. The Playwright e2e suite is **not** run in CI because
+it needs the Gemini development proxy; run `make e2e` locally before merging UI-affecting changes.
+
+## Releases
+
+Pushing a tag that starts with `v` runs `.github/workflows/release.yml`:
+
+```bash
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+It builds the `api` and `web` images for `linux/amd64` and `linux/arm64`, pushes them to
+`ghcr.io/ensemlabs/peep-api` and `ghcr.io/ensemlabs/peep-web` tagged `0.1.0` and `latest` (a pre-release tag such
+as `v0.2.0-rc.1` does not move `latest`), then creates a GitHub Release with generated notes. Users run the images
+with `docker-compose.ghcr.yml` (see the README). After the first release, set the two GHCR packages to public.
+
 ## End-to-end tests
 
 `make e2e` brings the stack up with `docker-compose.yml`, `docker-compose.gemini.yml` and `docker-compose.e2e.yml`

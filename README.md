@@ -8,7 +8,7 @@
 
 <p align="center">A ChatGPT-style web UI for AI agents: watch them think, call tools and make things, live.</p>
 
-<p align="center"><a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a></p>
+<p align="center"><a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a> <a href="https://github.com/ensemlabs/peep/actions/workflows/ci.yml"><img src="https://github.com/ensemlabs/peep/actions/workflows/ci.yml/badge.svg" alt="CI status"></a></p>
 
 <p align="center"><img src="docs/images/hero-dark.jpg" alt="Peep in dark theme: a prompt, a Thought row, a plan, tool and sub-agent rows, and a gallery of five AI-generated images" width="100%"></p>
 
@@ -124,6 +124,17 @@ cp config/models.example.yaml config/models.yaml
 
 `make up` also creates the two files if they are missing. After changing `config/models.yaml`, run
 `docker compose restart api`. The built-in `replay:*` demo runs need no provider (see [docs/usage.md](docs/usage.md)).
+
+### Run the prebuilt images
+
+To skip the build, use the images published to GHCR (`linux/amd64` and `linux/arm64`). Prepare `.env` and
+`config/models.yaml` as above, then:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d
+```
+
+It pulls `latest`; set `PEEP_VERSION=0.1.0` (in `.env` or the shell) to pin a release. Needs Compose 2.24 or newer.
 
 ## Configuration
 

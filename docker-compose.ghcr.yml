@@ -1,0 +1,10 @@
+# Run the prebuilt images from GHCR instead of building: used with docker-compose.yml.
+#   docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d
+# Pin a release with PEEP_VERSION (for example PEEP_VERSION=0.1.0 in .env or the shell); default is latest.
+services:
+  api:
+    image: ghcr.io/ensemlabs/peep-api:${PEEP_VERSION:-latest}
+    build: !reset null
+  web:
+    image: ghcr.io/ensemlabs/peep-web:${PEEP_VERSION:-latest}
+    build: !reset null

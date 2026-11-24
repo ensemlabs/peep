@@ -8,7 +8,7 @@
 
 <p align="center">Giao diện chat kiểu ChatGPT dành cho AI agent: xem agent suy nghĩ, gọi công cụ và tạo nội dung ngay khi nó đang làm.</p>
 
-<p align="center"><a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="Giấy phép MIT"></a></p>
+<p align="center"><a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="Giấy phép MIT"></a> <a href="https://github.com/ensemlabs/peep/actions/workflows/ci.yml"><img src="https://github.com/ensemlabs/peep/actions/workflows/ci.yml/badge.svg" alt="Trạng thái CI"></a></p>
 
 <p align="center"><img src="docs/images/hero-dark.jpg" alt="Peep giao diện tối: câu hỏi, dòng Thought, kế hoạch, các dòng công cụ và sub-agent, cùng bộ năm ảnh do AI tạo" width="100%"></p>
 
@@ -126,6 +126,17 @@ cp config/models.example.yaml config/models.yaml
 
 `make up` cũng tự tạo hai file trên nếu còn thiếu. Sau khi sửa `config/models.yaml`, chạy `docker compose restart api`.
 Các lượt chạy mẫu `replay:*` có sẵn không cần nhà cung cấp nào (xem [docs/usage.md](docs/usage.md)).
+
+### Chạy image dựng sẵn
+
+Muốn bỏ qua bước build, dùng các image đã đăng trên GHCR (`linux/amd64` và `linux/arm64`). Chuẩn bị `.env` và
+`config/models.yaml` như trên, rồi:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d
+```
+
+Mặc định kéo bản `latest`; đặt `PEEP_VERSION=0.1.0` (trong `.env` hoặc shell) để cố định một bản phát hành. Cần Compose 2.24 trở lên.
 
 ## Cấu hình
 
