@@ -82,7 +82,7 @@ export function MessageList({ messages, conversationKey, onExample, userName, lo
           ) : messages.length === 0 ? (
             <EmptyState onExample={onExample} name={userName} />
           ) : (
-            messages.map((m, i) => <MessageView key={m.id} message={m} isLast={i === messages.length - 1} onStop={onStop} />)
+            messages.map((m) => <MessageView key={m.id} message={m} onStop={onStop} />)
           )}
         </div>
       </div>

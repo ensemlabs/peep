@@ -3,7 +3,6 @@ import { AlertCircle, Check, Copy, Square } from 'lucide-react'
 import type { Message } from '@/api/types'
 import { useT } from '@/i18n'
 import { usageSummary } from '@/lib/format'
-import { Mascot, mascotStateFor } from '@/components/Mascot'
 import { MediaGrid } from '../media/MediaGrid'
 import { Markdown } from './parts/Markdown'
 import { PartsRenderer } from './parts/PartsRenderer'
@@ -73,7 +72,7 @@ function AssistantActions({ message }: { message: Message }) {
   )
 }
 
-export const MessageView = memo(function MessageView({ message, isLast = false, onStop }: { message: Message; isLast?: boolean; onStop?: () => void }) {
+export const MessageView = memo(function MessageView({ message, onStop }: { message: Message; onStop?: () => void }) {
   const t = useT()
   const live = message.status === 'streaming'
   const status = useLeaving(live, 300) // hook order must not depend on the role
@@ -94,15 +93,12 @@ export const MessageView = memo(function MessageView({ message, isLast = false, 
   const hasContent = message.parts.length > 0 || !!message.content
   return (
     <div
-      className="msg-enter group/msg flex min-w-0 gap-3"
+      className="msg-enter group/msg min-w-0"
       data-testid="message-assistant"
       data-status={message.status}
       aria-label={t('chat.assistantMessage')}
     >
-      <div className="hidden pt-0.5 sm:block">
-        <Mascot state={mascotStateFor(message)} size={28} animated={live || isLast} />
-      </div>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0">
         {message.parts.length > 0 ? (
           <PartsRenderer parts={message.parts} live={live} />
         ) : (

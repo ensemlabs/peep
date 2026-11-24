@@ -62,3 +62,14 @@ describe('empty state greeting', () => {
     expect(firstName('  Nguyen Van A ')).toBe('Nguyen')
   })
 })
+
+describe('one Pip only', () => {
+  it('assistant messages have no avatar mascot, streaming or finished', () => {
+    const { rerender } = renderWithI18n(<MessageView message={msg({ status: 'complete' })} />)
+    expect(screen.queryByTestId('mascot')).toBeNull()
+    rerender(<MessageView message={msg({ status: 'streaming', parts: [{ id: 'p', type: 'thinking', text: 'hmm', status: 'running', started_at: '2026-01-01T00:00:00Z' }] })} />)
+    // exactly one Pip: the one in the run-status line
+    expect(screen.getAllByTestId('mascot')).toHaveLength(1)
+    expect(screen.getByTestId('run-status').querySelector('[data-testid=mascot]')).not.toBeNull()
+  })
+})

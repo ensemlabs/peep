@@ -14,7 +14,7 @@ interface Props {
   running?: boolean
   error?: boolean
   hideDuration?: boolean
-  /** Defaults to true while running; ThinkingBlock shows the animated mascot instead. */
+  /** A small spinner while running (default true). */
   showSpinner?: boolean
   /** Default open state; user toggling overrides it for good. */
   defaultOpen?: boolean

@@ -48,13 +48,14 @@ describe('ThinkingBlock', () => {
     await userEvent.click(screen.getByTestId('step-toggle'))
     expect(screen.getByText('secret thoughts')).toBeInTheDocument()
   })
-  it('is expanded while streaming, showing live text, the mascot and "Thinking…"', () => {
+  it('is expanded while streaming, showing live text, a spinner (no mascot) and "Thinking…"', () => {
     renderWithI18n(<ThinkingBlock part={thinking({ status: 'running', ended_at: null })} live />)
     expect(screen.getByTestId('step-toggle')).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByTestId('step-thinking')).toHaveAttribute('data-state', 'open')
     expect(screen.getByText('Thinking…')).toBeInTheDocument()
     expect(screen.getByText('secret thoughts')).toBeInTheDocument()
-    expect(screen.getByTestId('mascot')).toHaveAttribute('data-animated', 'true')
+    expect(screen.queryByTestId('mascot')).toBeNull()
+    expect(screen.getByTestId('spinner')).toBeInTheDocument()
     expect(screen.getByTestId('step-duration')).toBeInTheDocument()
   })
   it('auto-collapses once when done', () => {
