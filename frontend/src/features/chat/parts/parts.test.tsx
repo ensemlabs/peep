@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { renderWithI18n } from '@/test/utils'
 import { CollapsibleStep } from './CollapsibleStep'
 import { ThinkingBlock } from './ThinkingBlock'
-import { looksLikeMarkdown, ToolCard } from './ToolCard'
+import { looksLikeMarkdown, meaningfulSummary, ToolCard } from './ToolCard'
 import type { ThinkingPart, ToolPart } from '@/api/types'
 
 describe('CollapsibleStep', () => {
@@ -151,5 +151,23 @@ describe('looksLikeMarkdown', () => {
     expect(looksLikeMarkdown('Synthesised 5.0 s of audio.')).toBe(false)
     expect(looksLikeMarkdown('## Title\n\n- a\n- b')).toBe(true)
     expect(looksLikeMarkdown('see [docs](http://x)')).toBe(true)
+  })
+})
+
+describe('tool summaries', () => {
+  it('drops empty or punctuation-only summaries', () => {
+    expect(meaningfulSummary('')).toBe('')
+    expect(meaningfulSummary('.')).toBe('')
+    expect(meaningfulSummary('  . ')).toBe('')
+    expect(meaningfulSummary('/')).toBe('')
+    expect(meaningfulSummary('a')).toBe('')
+    expect(meaningfulSummary('src/primes.py')).toBe('src/primes.py')
+    expect(meaningfulSummary('ls')).toBe('ls')
+  })
+  it('renders "Ran run_tests 2s" without a dangling dot for a tiny summary', () => {
+    const t: ToolPart = { id: 'x', type: 'tool', name: 'run_tests', input: { path: '.' }, output: 'ok', files: [], status: 'done', started_at: '2026-01-01T00:00:00Z', ended_at: '2026-01-01T00:00:02Z' }
+    renderWithI18n(<ToolCard part={t} live={false} />)
+    expect(screen.getByTestId('tool-label')).toHaveTextContent(/^Ran run_tests$/)
+    expect(screen.getByTestId('step-toggle')).toHaveTextContent('Ran run_tests2s')
   })
 })

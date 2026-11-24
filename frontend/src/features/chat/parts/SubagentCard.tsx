@@ -4,11 +4,13 @@ import type { SubagentPart } from '@/api/types'
 import { CollapsibleStep } from './CollapsibleStep'
 import { PartsRenderer } from './PartsRenderer'
 import { useElapsed } from './useElapsed'
+import { meaningfulSummary } from './ToolCard'
 
 export function SubagentCard({ part, live }: { part: SubagentPart; live: boolean }) {
   const t = useT()
   const running = part.status === 'running' && live
   const elapsed = useElapsed(part.started_at, part.ended_at, running)
+  const task = meaningfulSummary(part.task ?? '')
   return (
     <CollapsibleStep
       testId="step-subagent"
@@ -16,7 +18,7 @@ export function SubagentCard({ part, live }: { part: SubagentPart; live: boolean
         <span data-testid="subagent-label" data-shimmer={running} className={cn('flex min-w-0 items-center gap-1.5', running && 'shimmer-text')}>
           <span className="shrink-0">{t('subagent.label')}</span>{' '}
           <span className="shrink-0 font-medium">{part.name}</span>
-          {part.task && <>{' '}<span className="truncate opacity-70">· {part.task}</span></>}
+          {task && <>{' '}<span className="truncate opacity-70">· {task}</span></>}
         </span>
       }
       running={running}

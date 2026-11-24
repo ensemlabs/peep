@@ -19,7 +19,17 @@ export function interpolate(template: string, vars?: Vars): string {
   return template.replace(/\{(\w+)\}/g, (m, name: string) => (name in vars ? String(vars[name]) : m))
 }
 
+/**
+ * Plural rule: when `vars.n` is a number and the language's plural category is "one" (English: exactly 1),
+ * a `<key>_one` entry is used if it exists; otherwise the plain key is the "other" form.
+ * Vietnamese has no plural, so it always uses the plain key.
+ */
 export function translate(lang: Lang, key: TKey, vars?: Vars): string {
+  const dict = DICTS[lang] as Record<string, string>
+  if (typeof vars?.n === 'number' && new Intl.PluralRules(lang).select(vars.n) === 'one') {
+    const one = dict[`${key}_one`]
+    if (one) return interpolate(one, vars)
+  }
   return interpolate(DICTS[lang][key] ?? en[key], vars)
 }
 

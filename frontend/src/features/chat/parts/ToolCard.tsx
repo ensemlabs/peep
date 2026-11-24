@@ -7,6 +7,12 @@ import { Markdown } from './Markdown'
 import { MediaGrid } from '../../media/MediaGrid'
 import { useElapsed } from './useElapsed'
 
+/** A summary is only worth showing with at least two meaningful characters (punctuation and spaces do not count). */
+export function meaningfulSummary(s: string): string {
+  const trimmed = s.trim()
+  return trimmed.replace(/[\s\p{P}\p{S}]/gu, '').length >= 2 ? trimmed : ''
+}
+
 export function summarize(input: unknown): string {
   if (input == null) return ''
   if (typeof input === 'string') return input.slice(0, 100)
@@ -51,7 +57,7 @@ export function ToolCard({ part, live }: { part: ToolPart; live: boolean }) {
   const running = part.status === 'running' && live
   const elapsed = useElapsed(part.started_at, part.ended_at, running)
   const error = part.status === 'error'
-  const summary = summarize(part.input)
+  const summary = meaningfulSummary(summarize(part.input))
   const inputText = typeof part.input === 'string' ? part.input : prettyJson(part.input)
   const verb = running ? t('tool.running') : error ? t('tool.failed') : t('tool.ran')
   return (

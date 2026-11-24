@@ -303,6 +303,12 @@ export const en = {
   'suggest.explain.sub': 'threads vs processes',
   'suggest.explain.prompt': 'Explain the difference between threads and processes with a simple analogy.',
   'reasoning.label': 'Thinking',
+  'time.seconds_one': '{n} second',
+  'time.minutes_one': '{n} minute',
+  'time.hours_one': '{n} hour',
+  'admin.total_one': '{n} user',
+  'context.messages_one': '{n} message',
+  'skills.files_one': '{n} file',
 } as const
 
 export type TKey = keyof typeof en

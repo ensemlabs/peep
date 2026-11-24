@@ -305,4 +305,10 @@ export const vi = {
   'suggest.explain.sub': 'thread và process',
   'suggest.explain.prompt': 'Giải thích sự khác nhau giữa thread và process bằng một phép so sánh đơn giản.',
   'reasoning.label': 'Suy nghĩ',
+  'time.seconds_one': '{n} giây',
+  'time.minutes_one': '{n} phút',
+  'time.hours_one': '{n} giờ',
+  'admin.total_one': '{n} người dùng',
+  'context.messages_one': '{n} tin nhắn',
+  'skills.files_one': '{n} tệp',
 } as const satisfies Record<TKey, string>
