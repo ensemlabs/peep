@@ -45,15 +45,15 @@ The history uses Conventional Commits: `type(scope): short summary` in lower cas
 
 ```
 dev            day-to-day work: commits and pull requests go here
- └─ dev/v0.1.1 cut from dev when a version is decided (dev/<version>)
+ └─ dev-v0.1.1 cut from dev when a version is decided (dev-<version>)
       └─ merged into main, then main is tagged v0.1.1 → image + GitHub Release
 ```
 
-- Open pull requests against `dev`, not `main`. `main` only ever receives merges from a `dev/<version>` branch, so
+- Open pull requests against `dev`, not `main`. `main` only ever receives merges from a `dev-<version>` branch, so
   it always matches the latest release.
-- To cut a version: `git switch dev && git pull && git switch -c dev/v0.1.1 && git push -u origin dev/v0.1.1`.
-  Fixes for that version go on `dev/v0.1.1` (and back into `dev`).
-- To publish it: merge `dev/v0.1.1` into `main` with `--no-ff`, tag the merge commit `v0.1.1` and push the tag
+- To cut a version: `git switch dev && git pull && git switch -c dev-v0.1.1 && git push -u origin dev-v0.1.1`.
+  Fixes for that version go on `dev-v0.1.1` (and back into `dev`).
+- To publish it: merge `dev-v0.1.1` into `main` with `--no-ff`, tag the merge commit `v0.1.1` and push the tag
   (see [docs/development.md](docs/development.md#releases)). Version tags follow semver: `vMAJOR.MINOR.PATCH`.
 
 ## Pull requests

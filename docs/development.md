@@ -53,13 +53,13 @@ part of it needs a live model endpoint; run `make e2e` locally before merging UI
 
 ## Releases
 
-Branches: day-to-day work goes to `dev`; a version is cut as `dev/<version>` from `dev`; a release merges that
+Branches: day-to-day work goes to `dev`; a version is cut as `dev-<version>` from `dev`; a release merges that
 branch into `main` and tags the merge (see [CONTRIBUTING.md](../CONTRIBUTING.md#branches-and-releases)).
 
 ```bash
-git switch dev && git pull && git switch -c dev/v0.1.1 && git push -u origin dev/v0.1.1   # cut the version
-# ...wait for CI on dev/v0.1.1 to be green...
-git switch main && git pull && git merge --no-ff dev/v0.1.1 -m "release: v0.1.1"
+git switch dev && git pull && git switch -c dev-v0.1.1 && git push -u origin dev-v0.1.1   # cut the version
+# ...wait for CI on dev-v0.1.1 to be green...
+git switch main && git pull && git merge --no-ff dev-v0.1.1 -m "release: v0.1.1"
 git tag -a v0.1.1 -m "Peep v0.1.1" && git push origin main v0.1.1                          # publish it
 ```
 
