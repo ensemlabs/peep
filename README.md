@@ -35,6 +35,31 @@
 </tr>
 </table>
 
+## Account management
+
+Peep has real accounts for a team, with an admin console to run them. Admins approve people who sign up, or create
+accounts themselves and hand over a temporary password, then manage everyone from one page that also works on a
+phone. Every admin change is written to an audit log, and each user can get a token limit. The full guide is in
+[docs/usage.md](docs/usage.md#account-management).
+
+- Create accounts (active at once, or pending), and approve, disable, enable or delete many at a time. Your own
+  account is skipped.
+- Make or remove admins, reset passwords, disable a user (sessions end, data stays) or delete one with their files.
+- Set a token limit per user, per day or per month (UTC), checked before a message is sent. Unlimited by default.
+- Users see their usage in the account menu; at the limit, the composer says when it resets.
+- An audit log tab shows who did what to whom, with search and an action filter.
+
+<table>
+<tr>
+<td width="50%" valign="top"><img src="docs/media/clips/admin-users.webp" alt="Admin page: a new account is created, then several pending users are approved at once" width="100%"><br><b>Create and approve</b><br><sub>Make an account, approve a batch.</sub></td>
+<td width="50%" valign="top"><img src="docs/media/clips/admin-audit.webp" alt="Audit log tab listing admin actions, then filtered by action" width="100%"><br><b>Audit log</b><br><sub>Who changed what, and when.</sub></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><img src="docs/media/clips/quota-limit.webp" alt="An admin sets a token limit, then the user sees the limit banner and cannot send" width="100%"><br><b>Token limits</b><br><sub>Set a limit; the user is blocked at the cap.</sub></td>
+<td align="center" valign="top"><img src="docs/media/clips/admin-mobile.webp" alt="Phone: the admin users page with selection and the bulk action bar" width="300"><br><b>Admin on a phone</b><br><sub>The same console on mobile.</sub></td>
+</tr>
+</table>
+
 ## What is Peep
 
 Peep is a self-hosted chat web app that shows the whole run of an AI agent, not only its final answer: thinking, tool
@@ -60,7 +85,8 @@ without a model.
 - The sidebar shows which chats are running, unread or failed, with search and pinning.
 
 **Everyone gets in safely**
-- Email and password accounts. New accounts wait for an admin to approve them in the admin page.
+- Email and password accounts. New accounts wait for an admin to approve them, or an admin creates them directly.
+  Bulk actions, an audit log and optional per-user token limits are built in.
 - Plugins and Skills page: users store MCP server entries and skill packages for a future agent (not used by the
   chat yet). Plugin secrets are encrypted at rest.
 
@@ -184,8 +210,9 @@ Full list and numbers: [docs/configuration.md](docs/configuration.md) and [docs/
 - Peep runs one API worker: replies live in the process, so a restart marks running replies as interrupted.
   Scaling out needs a shared event bus.
 - Plugins and Skills are stored but not used by the chat yet: connecting a real agent backend is the next step.
-- No SSO, email verification or password-reset emails; an admin resets passwords.
-- Uploads are not virus-scanned and have no per-user quota.
+- No SSO, email verification, email invitations or password-reset emails; an admin resets passwords and hands over
+  temporary ones.
+- Uploads are not virus-scanned and have no per-user quota (token limits only count model tokens).
 - The PWA has no service worker, so there is no offline mode.
 
 ## License

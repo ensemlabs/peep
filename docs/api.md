@@ -37,9 +37,12 @@ Files and conversations belong to one user. Another user's id gives 404 `not_fou
 | POST | `/api/auth/register` | public | 201 `{user}` + cookie |
 | POST | `/api/auth/login` | public | 200 `{user}` + cookie |
 | POST | `/api/auth/logout` | public | 204, cookie cleared |
-| GET | `/api/auth/me` | session | 200 `{user}` |
+| GET | `/api/auth/me` | session | 200 `{user, quota}` |
 | POST | `/api/auth/password` | session | 204 |
-| GET | `/api/admin/users` | admin | 200 `{items:[user], total}` |
+| GET | `/api/admin/users` | admin | 200 `{items:[user + tokens_used], total}` |
+| POST | `/api/admin/users` | admin | 201 `{user}` |
+| POST | `/api/admin/users/bulk` | admin | 200 `{done, skipped}` |
+| GET | `/api/admin/audit` | admin | 200 `{items:[AuditEntry], total}` |
 | PATCH | `/api/admin/users/{id}` | admin | 200 `{user}` |
 | POST | `/api/admin/users/{id}/password` | admin | 204 |
 | DELETE | `/api/admin/users/{id}` | admin | 204 |
@@ -75,8 +78,23 @@ Files and conversations belong to one user. Another user's id gives 404 `not_fou
 
 ```json
 {"id": "uuid", "email": "a@b.c", "display_name": "Ann", "role": "user|admin",
- "status": "pending|active|disabled", "created_at": "...", "last_login_at": "...|null", "approved_at": "...|null"}
+ "status": "pending|active|disabled", "created_at": "...", "last_login_at": "...|null", "approved_at": "...|null",
+ "token_limit": 500000, "token_period": "day|month"}
 ```
+
+`token_limit` is an integer or `null` (unlimited, the default). `token_period` is `month` by default.
+
+**Quota** (in `GET /api/auth/me`)
+
+| Field | Type | Meaning |
+| :--- | :--- | :--- |
+| `limit` | integer \| null | The user's `token_limit` |
+| `period` | `day` \| `month` | The user's `token_period` |
+| `used` | integer | Tokens used in the current window, also when `limit` is `null` |
+| `resets_at` | string | Start of the next window (00:00 UTC of the next day, or of the 1st of the next month) |
+
+**AuditEntry**: `{id, actor_id, actor_email, target_id, target_email, action, detail, created_at}`, see
+[GET /api/admin/audit](#get-apiadminaudit).
 
 **Conversation** (full form): `{id, title, model, created_at, updated_at, pinned}`. `title` is `""` until the first
 message. `model` can be `null`. The list returns a different shape, see [GET /api/conversations](#get-apiconversations).
@@ -191,7 +209,8 @@ Always 204 and clears the cookie. Deletes the session if the cookie was valid.
 
 ### GET /api/auth/me
 
-`{user}`. Works for `pending` users (the app polls it). 401 `unauthenticated`, 403 `account_disabled`.
+`{user, quota}` (see [Quota](#objects)). Works for `pending` users (the app polls it). 401 `unauthenticated`, 403
+`account_disabled`.
 
 ### POST /api/auth/password
 
@@ -232,12 +251,87 @@ The client IP is the TCP peer. When the peer is inside `TRUSTED_PROXIES`, it is 
 
 Query: `q` (substring of email or display name, case-insensitive), `status` (`pending` \| `active` \| `disabled`),
 `limit` (1-100, default 50), `offset` (default 0). Returns `{items: [User], total}`. Pending users come first, then
-newest first. A bad `status` gives 422 `invalid_request`.
+newest first. A bad `status` gives 422 `invalid_request`. Each item is a User plus `tokens_used` (integer): the
+tokens the user used in the current window of their own `token_period`. It is computed with one grouped query for
+the page.
+
+### POST /api/admin/users
+
+Creates an account. Body:
+
+| Field | Type | Default | Meaning |
+| :--- | :--- | :--- | :--- |
+| `email` | string | | Trimmed and lower-cased, same rules as register |
+| `display_name` | string | | 1-80 characters after trimming |
+| `password` | string | | 10-128 characters, not equal to the email. No change is forced on first login |
+| `role` | `user` \| `admin` | `user` | |
+| `status` | `active` \| `pending` | `active` | `active` records `approved_at` and the creating admin |
+
+Returns 201 `{user}`. Writes the audit action `user.create` with `{role, status}`.
+
+| Status | `code` | When |
+| :--- | :--- | :--- |
+| 422 | `invalid_email` | As in register |
+| 422 | `invalid_display_name` | Not 1-80 characters |
+| 422 | `weak_password` | As in register |
+| 409 | `email_taken` | Email exists (case-insensitive) |
+| 422 | `invalid_request` | Missing field, or a bad `role` or `status` |
+
+### POST /api/admin/users/bulk
+
+Body `{ids, action}`: `ids` is 1-100 UUIDs (duplicates are merged), `action` is `approve`, `disable`, `enable` or
+`delete`. Returns 200 `{done: [id], skipped: [{id, reason}]}`; everything runs in one database transaction.
+
+| Action | Applies to | Effect |
+| :--- | :--- | :--- |
+| `approve` | `pending` | `active`, records `approved_at` and the admin |
+| `disable` | `pending`, `active` | `disabled`, revokes the user's sessions |
+| `enable` | `disabled` | `active`, records `approved_at` and the admin |
+| `delete` | any status | Deletes stored objects and the user, like `DELETE /api/admin/users/{id}` |
+
+`skipped[].reason` is `self` (the caller's own id), `not_found` or `no_change` (the action does not apply to the
+user's status). Skipped users are not an error; an empty or over-long `ids`, or an unknown `action`, gives 422
+`invalid_request`. Each changed user writes one audit row like the single call, with `"bulk": true` in `detail`.
+
+### GET /api/admin/audit
+
+Query: `q` (substring of the actor's or target's email, case-insensitive; `%` and `_` are literal), `action` (one of
+`user.create`, `user.status`, `user.role`, `user.password_reset`, `user.delete`, `user.quota`; another value gives 422
+`invalid_request`), `limit` (1-100, default 50), `offset` (default 0). Returns `{items: [AuditEntry], total}`, newest
+first.
+
+| Field | Type | Meaning |
+| :--- | :--- | :--- |
+| `id` | string | |
+| `actor_id` | string \| null | The admin; `null` once that account is deleted |
+| `actor_email` | string | Email of the admin when the entry was written |
+| `target_id` | string \| null | The affected user. Not a foreign key, so it stays after deletion |
+| `target_email` | string \| null | Email of the target when the entry was written |
+| `action` | string | One of the values above |
+| `detail` | object | By action, see below |
+| `created_at` | string | |
+
+| `action` | `detail` |
+| :--- | :--- |
+| `user.create` | `{role, status}` |
+| `user.status` | `{from, to}` (statuses) |
+| `user.role` | `{from, to}` (roles) |
+| `user.quota` | `{from: {limit, period}, to: {limit, period}}` |
+| `user.password_reset`, `user.delete` | `{}` |
+
+Bulk entries have `"bulk": true` added to `detail` (for `user.delete` it is `{"bulk": true}`).
 
 ### PATCH /api/admin/users/{id}
 
-Body `{status?, role?}` (`status`: `pending` \| `active` \| `disabled`; `role`: `user` \| `admin`). Setting `active`
-records `approved_at` and the approving admin. Setting `disabled` revokes the user's sessions. Returns `{user}`.
+Body `{status?, role?, token_limit?, token_period?}` (`status`: `pending` \| `active` \| `disabled`; `role`: `user` \|
+`admin`; `token_limit`: integer 1 to 1,000,000,000,000, or `null` to remove the limit; `token_period`: `day` \|
+`month`). Setting `active` records `approved_at` and the approving admin. Setting `disabled` revokes the user's
+sessions. Returns `{user}`.
+
+- An omitted `token_limit` leaves it unchanged; an explicit `null` removes the limit. `token_period` cannot be `null`.
+- A value outside 1..1,000,000,000,000 gives 422 `invalid_request`.
+- Audit rows: a real change of `status` writes `user.status`, of `role` writes `user.role`, and a change of the limit
+  or the period writes one `user.quota`. A request that changes nothing writes nothing.
 
 | Status | `code` | When |
 | :--- | :--- | :--- |
@@ -246,12 +340,13 @@ records `approved_at` and the approving admin. Setting `disabled` revokes the us
 
 ### POST /api/admin/users/{id}/password
 
-Body `{new_password}`. 204. Revokes all sessions of that user. Errors: 400 `cannot_modify_self`, 404 `not_found`,
+Body `{new_password}`. 204. Revokes all sessions of that user. Writes `user.password_reset`. Errors: 400 `cannot_modify_self`, 404 `not_found`,
 422 `weak_password`.
 
 ### DELETE /api/admin/users/{id}
 
-204. Deletes the user's stored objects, then the user (conversations, messages, files and sessions cascade). Errors:
+204. Writes `user.delete` first, deletes the user's stored objects, then the user (conversations, messages, files,
+sessions and token usage rows cascade). Errors:
 400 `cannot_modify_self`, 404 `not_found`.
 
 ## Models
@@ -343,6 +438,13 @@ Body:
   `high` are only accepted when the model has levels with those ids.
 - The level's `patch` from the models file is merged into the provider request.
 
+Token limit: after the conversation, empty message, model and `reasoning` checks, and before the run is reserved (so
+before `run_in_progress` and the attachment checks), the server sums the user's tokens in the current
+window (see [Token usage](#token-usage)). If `token_limit` is set and the sum is at least the limit, it answers 429
+`quota_exceeded` and stores nothing. The check is soft: a reply that has started is never cut off. A user with a
+`token_limit` can have only one running reply across all conversations; a second send answers 409 `run_in_progress`
+("Another reply is still being generated").
+
 Effects: stores the user message and an empty assistant message (`status: streaming`), attaches the files, sets the
 conversation title (first 60 characters of the text with whitespace collapsed, or the first attachment's file name)
 if it has none, stores the model on the conversation, and starts the run. The response is an SSE stream, see
@@ -353,7 +455,8 @@ if it has none, stores the model on the conversation, and starts the run. The re
 | 200 | | SSE stream |
 | 404 | `not_found` | Not your conversation |
 | 409 | `file_in_use` | The file is attached to a message (or generated) and cannot be deleted |
-| 409 | `run_in_progress` | This conversation already has a running reply |
+| 409 | `run_in_progress` | This conversation already has a running reply, or a user with a `token_limit` has one running elsewhere |
+| 429 | `quota_exceeded` | The user has a `token_limit` and the tokens used in the current window have reached it |
 | 422 | `empty_message` | No text (after trimming) and no attachment |
 | 422 | `invalid_model` | Unknown model (only with `dev.model_switcher`) |
 | 422 | `invalid_reasoning_level` | The model has no such thinking level |
@@ -419,6 +522,14 @@ data: {"message_id":"A1","part_id":"t1","patch":{"status":"done","ended_at":"...
 event: done
 data: {"message_id":"A1","status":"complete"}
 ```
+
+### Token usage
+
+When a run ends (`RunState.finish`), its `usage.total_tokens` is added to the table `token_usage` in the same
+transaction as the message update, if it is greater than 0. Replies without provider usage (stopped runs, estimate
+providers, replay models) are counted from the estimate. Windows are UTC: `day` starts at 00:00 UTC, `month` on the
+1st at 00:00 UTC. The rows are not tied to conversations (`message_id` is cleared when the message is deleted), so
+deleting chats does not reset usage; deleting the user removes them. A user's limit is `null` (unlimited) by default.
 
 ## Context
 
@@ -626,6 +737,7 @@ A deleted draft no longer counts in `GET /api/context`.
 | 422 | `too_many_plugins` | Plugin limit (100) reached |
 | 422 | `empty_file` | Zero-byte upload |
 | 429 | `too_many_attempts` | Throttled; has `Retry-After` |
+| 429 | `quota_exceeded` | Token limit of the current period reached; sending a message is refused |
 | 500 | `internal_error` | Unhandled error (details only in the server log) |
 | 503 | `secrets_not_configured` | `SECRETS_KEY` is not set or invalid and a plugin header must be stored |
 | 503 | `unhealthy` | `/api/health` and the database is down |

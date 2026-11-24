@@ -35,6 +35,33 @@
 </tr>
 </table>
 
+## Quản lý tài khoản
+
+Peep có tài khoản thật cho cả nhóm, kèm trang quản trị để điều hành. Admin duyệt người tự đăng ký, hoặc tự tạo tài
+khoản rồi gửi mật khẩu tạm cho họ, và quản lý mọi người trên một trang dùng được cả trên điện thoại. Mọi thay đổi của
+admin đều được ghi vào nhật ký, và mỗi người dùng có thể có hạn mức token. Hướng dẫn đầy đủ nằm ở
+[docs/usage.md](docs/usage.md#account-management).
+
+- Tạo tài khoản (hoạt động ngay hoặc chờ duyệt), duyệt, vô hiệu hoá, kích hoạt lại hoặc xoá nhiều người cùng lúc.
+  Tài khoản của chính bạn được bỏ qua.
+- Cấp hoặc gỡ quyền quản trị, đặt lại mật khẩu, vô hiệu hoá một người (phiên bị huỷ, dữ liệu vẫn còn) hoặc xoá họ cùng
+  tệp.
+- Đặt hạn mức token cho từng người, theo ngày hoặc theo tháng (giờ UTC), kiểm tra trước khi gửi tin. Mặc định không
+  giới hạn.
+- Người dùng xem mức đã dùng trong menu tài khoản; khi chạm hạn mức, khung soạn tin cho biết lúc nào được đặt lại.
+- Tab nhật ký cho biết ai đã làm gì với ai, có tìm kiếm và lọc theo hành động.
+
+<table>
+<tr>
+<td width="50%" valign="top"><img src="docs/media/clips/admin-users.webp" alt="Trang quản trị: tạo một tài khoản mới, rồi duyệt cùng lúc nhiều người đang chờ" width="100%"><br><b>Tạo và duyệt</b><br><sub>Tạo tài khoản, duyệt cả loạt.</sub></td>
+<td width="50%" valign="top"><img src="docs/media/clips/admin-audit.webp" alt="Tab nhật ký liệt kê các thao tác của admin, rồi lọc theo hành động" width="100%"><br><b>Nhật ký</b><br><sub>Ai đã đổi gì, vào lúc nào.</sub></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><img src="docs/media/clips/quota-limit.webp" alt="Admin đặt hạn mức token, rồi người dùng thấy thông báo hết hạn mức và không gửi được tin" width="100%"><br><b>Hạn mức token</b><br><sub>Đặt hạn mức; người dùng bị chặn khi chạm trần.</sub></td>
+<td align="center" valign="top"><img src="docs/media/clips/admin-mobile.webp" alt="Điện thoại: trang quản lý người dùng với thanh chọn và thao tác hàng loạt" width="300"><br><b>Quản trị trên điện thoại</b><br><sub>Cùng trang quản trị, trên mobile.</sub></td>
+</tr>
+</table>
+
 ## Peep là gì
 
 Peep là ứng dụng chat tự host, cho bạn thấy toàn bộ quá trình agent làm việc chứ không chỉ câu trả lời cuối: phần suy
@@ -60,7 +87,8 @@ sẵn để bạn xem đủ mọi thành phần mà không cần model.
 - Thanh bên cho biết cuộc chat nào đang chạy, chưa đọc hay bị lỗi; có tìm kiếm và ghim.
 
 **Tài khoản an toàn**
-- Tài khoản bằng email và mật khẩu. Tài khoản mới phải chờ admin duyệt ở trang quản trị.
+- Tài khoản bằng email và mật khẩu. Tài khoản mới phải chờ admin duyệt, hoặc do admin tạo trực tiếp. Có sẵn thao tác
+  hàng loạt, nhật ký và hạn mức token tuỳ chọn cho từng người.
 - Trang Plugins & Skills: mỗi người dùng lưu các MCP server và gói skill cho agent sau này (chat hiện chưa dùng đến).
   Thông tin bí mật của plugin được mã hoá khi lưu.
 
@@ -187,8 +215,9 @@ Chi tiết và con số: [docs/configuration.md](docs/configuration.md) và [doc
 - Peep chạy một worker API: các câu trả lời nằm trong tiến trình, nên khi khởi động lại, những câu đang chạy bị đánh dấu
   là bị gián đoạn. Muốn mở rộng cần một kênh sự kiện dùng chung.
 - Plugins và Skills mới chỉ được lưu, chat chưa dùng: bước tiếp theo là nối với một agent backend thật.
-- Chưa có SSO, xác minh email hay email đặt lại mật khẩu; admin đặt lại mật khẩu giúp.
-- Tệp tải lên chưa được quét virus và chưa có hạn mức theo người dùng.
+- Chưa có SSO, xác minh email, email mời hay email đặt lại mật khẩu; admin đặt lại mật khẩu và gửi mật khẩu tạm.
+- Tệp tải lên chưa được quét virus và chưa có hạn mức dung lượng theo người dùng (hạn mức token chỉ tính token của
+  model).
 - PWA chưa có service worker, nên chưa dùng được khi ngoại tuyến.
 
 ## Giấy phép

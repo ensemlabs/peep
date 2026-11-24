@@ -17,7 +17,7 @@ browser ──► web (nginx :80, host 127.0.0.1:${WEB_PORT:-8090})
 | :--- | :--- | :--- |
 | `web` | `frontend/Dockerfile`: Node build, then `nginx:1.29.8-alpine` | Serves the SPA, proxies `/api/` to the API, sets security headers. Only published port. |
 | `api` | `backend/Dockerfile` (`python:3.13-slim`, uv), target `runtime`, user `app` (uid 1000) | REST and SSE API, runs the replies in process. |
-| `postgres` | `postgres:18.6-alpine` | Users, sessions, login throttle, conversations, messages (with the part tree as JSONB), file metadata. Volume at `/var/lib/postgresql`. |
+| `postgres` | `postgres:18.6-alpine` | Users, sessions, login throttle, conversations, messages (with the part tree as JSONB), file metadata, token usage ledger, admin audit log. Volume at `/var/lib/postgresql`. |
 | `minio` | `cgr.dev/chainguard/minio`, pinned by digest | S3 storage for uploaded and generated files. Healthcheck `mc ready local`. |
 | `api-test` | `backend/Dockerfile`, target `test`, profile `test` | `pytest` against real Postgres and MinIO (database `ensemble_chat_test`, bucket `ensemble-chat-test`). |
 | LLM provider | external, any OpenAI-compatible API | Chat completions. Endpoints and keys come from `config/models.yaml` (or the `LLM_*` fallback). |
@@ -46,7 +46,7 @@ Everything is one origin, so no CORS is needed and the session cookie works as i
 | :--- | :--- |
 | `app/main.py` | App, lifespan (startup tasks), Origin middleware, `/api/health`, routers. Docs endpoints are off. |
 | `app/config.py` | Settings from environment (`pydantic-settings`). |
-| `app/models.py`, `alembic/` | Tables: `users`, `sessions`, `auth_throttle`, `conversations`, `messages`, `files`. Migrations `0001_initial` and `0002_models_usage_skills_plugins` (see [Database](#database)). |
+| `app/models.py`, `alembic/` | Tables: `users`, `sessions`, `auth_throttle`, `conversations`, `messages`, `files`, `token_usage`, `admin_audit`. Migrations `0001_initial`, `0002_models_usage_skills_plugins` and `0003_account_management` (see [Database](#database)). |
 | `app/security.py` | argon2id, email and password rules, session token, client IP. |
 | `app/deps.py` | Dependencies `current_session`, `current_user`, `active_user`, `admin_user`. |
 | `app/middleware.py` | Origin/Referer check. |
@@ -57,6 +57,7 @@ Everything is one origin, so no CORS is needed and the session cookie works as i
 | `app/services/media.py` | Upload ingestion, kind detection, thumbnails, `FileMeta`. |
 | `app/services/history.py` | Builds the OpenAI message list for a run. |
 | `app/services/model_registry.py` | Model registry: loads `config/models.yaml` (or builds one from the `LLM_*` variables), resolves providers, models and thinking levels, builds the OpenAI clients. |
+| `app/services/quota.py` | Token windows (UTC), usage sums, `record_usage`, `log_admin` (audit rows). |
 | `app/services/usage.py`, `tokens.py` | Usage normalisation, tiktoken estimates. |
 | `app/services/skills.py`, `secrets.py` | Skill package parsing and validation, Fernet encryption of plugin headers. |
 | `app/services/sessions.py`, `throttle.py`, `startup.py` | Sessions, login throttling, startup tasks. |
@@ -76,7 +77,8 @@ translated in the browser.
 
 ## Sending a message
 
-1. `POST /api/conversations/{id}/messages` checks the conversation owner, the message and the model.
+1. `POST /api/conversations/{id}/messages` checks the conversation owner, the message and the model, then the user's
+   token limit (429 `quota_exceeded`).
 2. `RunRegistry.reserve(conversation_id)` claims the conversation synchronously. A second send gets 409
    `run_in_progress`. The same check blocks deleting the conversation during a reply.
 3. The attachments are checked (yours, not yet attached, no other conversation), the user message and an empty
@@ -86,7 +88,8 @@ translated in the browser.
 5. The provider calls `ctx.emit_part`, `emit_delta`, `emit_update`. `RunState` updates its in-memory part tree
    (an index by part id, including nested parts) and puts one SSE event on the queue of every subscriber.
 6. When the provider returns, raises or is cancelled, the run closes parts still `running`, writes the final
-   status and `updated_at` of the conversation, sends `done`, and releases the conversation.
+   status and `updated_at` of the conversation (and the `token_usage` row, see
+   [Token limits](#token-limits-and-the-audit-log)), sends `done`, and releases the conversation.
 
 The SSE connection is only a subscriber. If the client disconnects, its queue is dropped and the run goes on. The
 queues are unbounded, so a slow client does not slow the run. A `: ping` comment goes out after 15 seconds
@@ -226,15 +229,43 @@ closed (`thinking` as `done`, the rest as `error`). The web app sends it from th
 
 ## Database
 
-Tables: `users`, `sessions`, `auth_throttle`, `conversations`, `messages`, `files`, `skills`, `plugins`.
+Tables: `users`, `sessions`, `auth_throttle`, `conversations`, `messages`, `files`, `skills`, `plugins`, `token_usage`,
+`admin_audit`.
 
 Migration `0002` adds `messages.usage` (JSONB), `conversations.pinned` and `conversations.last_read_at` (existing
 conversations are set as read), and the tables `skills` (unique per user and name; file list as JSONB) and `plugins`
 (unique per user and lower-cased name; headers as JSONB `[{name, value_enc}]`).
 
+Migration `0003` adds `users.token_limit` (BIGINT, null = unlimited, check `> 0`) and `users.token_period` (`day` or
+`month`, default `month`), and two tables:
+
+- `token_usage` (`user_id` cascades with the user, `message_id` is set to null when the message goes, `tokens`,
+  `created_at`; index on `user_id, created_at`). It is the ledger for token limits.
+- `admin_audit` (`actor_id` set to null when the admin goes, `actor_email`, `target_id` without a foreign key,
+  `target_email`, `action`, `detail` JSONB, `created_at`). Emails are snapshots, so rows outlive the accounts.
+
 The conversation list computes `status`, `unread` and `preview` with lateral subqueries over the last assistant
 message and the last non-empty message of each conversation, so it needs no extra columns. Paging uses the cursor
 `<pinned 0|1>~<updated_at ISO>` over the order (pinned, `updated_at` descending).
+
+## Token limits and the audit log
+
+`app/services/quota.py` holds the window maths (`period_bounds`: UTC day or month), the sums (`used_tokens`, and
+`used_tokens_many`, one grouped query for the admin list) and the writers (`record_usage`, `log_admin`).
+
+- Recording: `RunState.finish` adds one `token_usage` row (the message's `usage.total_tokens`, when greater than 0)
+  in the same transaction that writes the final message status, so a reply is counted once and with its message. The
+  usage may be an estimate (`ensure_usage` runs first for stopped runs and providers that send none).
+- Checking: `POST /api/conversations/{id}/messages` sums the user's rows in the current window before reserving the
+  run and answers 429 `quota_exceeded` when `token_limit` is set and reached. It is a soft limit: a run in progress is
+  never cut. Because usage is booked only when a run ends, a user with a `token_limit` also gets a single run slot
+  (`RunRegistry.reserve_limited`): a second send while one is running answers 409 `run_in_progress`.
+  `GET /api/auth/me` returns the same sum as `quota`.
+- Deleting users (single or bulk) commits the DB delete and its audit rows first, then removes the user's MinIO
+  objects best-effort; a failed object delete is logged and leaves only an orphaned object.
+- Audit: every admin change (`user.create`, `user.status`, `user.role`, `user.password_reset`, `user.delete`,
+  `user.quota`) adds an `admin_audit` row through `log_admin` in the same transaction as the change. Bulk actions run
+  in one transaction and tag each row with `bulk: true`.
 
 ## Skills and plugins
 
