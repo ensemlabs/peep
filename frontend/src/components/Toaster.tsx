@@ -31,7 +31,7 @@ export function Toaster() {
   }, [toasts, dismiss])
   if (!toasts.length) return null
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-4 z-[70] flex flex-col items-center gap-2 px-4">
+    <div className="pointer-events-none fixed inset-x-0 bottom-[max(1rem,calc(var(--safe-bottom)+0.5rem))] z-[70] flex flex-col items-center gap-2 pl-[max(1rem,var(--safe-left))] pr-[max(1rem,var(--safe-right))]">
       {toasts.map((x) => (
         <div key={x.id} role="alert" data-testid="toast" className="pointer-events-auto flex max-w-md items-start gap-2 rounded-xl border border-line bg-bg px-3.5 py-2.5 text-sm shadow-lg">
           <span className="flex-1 text-danger">{x.message}</span>

@@ -273,6 +273,22 @@ button:disabled {
 /* Lightbox: keep the viewer inside the viewport */
 .yarl__root {
   --yarl__color_backdrop: rgba(0, 0, 0, 0.96);
+  /* Safe areas (notch, Dynamic Island, home indicator): toolbar, counter and thumbnails strip; nav buttons are offset below. */
+  --yarl__toolbar_padding: max(8px, var(--safe-top)) max(8px, var(--safe-right)) 8px max(8px, var(--safe-left));
+  --yarl__counter_margin: max(8px, var(--safe-top)) 8px 8px max(8px, var(--safe-left));
+  --yarl__thumbnails_container_padding: 16px max(16px, var(--safe-right)) max(16px, var(--safe-bottom)) max(16px, var(--safe-left));
+}
+.yarl__root .yarl__navigation_prev { left: var(--safe-left); }
+.yarl__root .yarl__navigation_next { right: var(--safe-right); }
+/* Keep the media (and the video's native controls) clear of the insets. yarl subtracts the container's computed padding
+   when it measures the slide area, so zoom/pan limits stay correct. The toolbar, counter and nav buttons are absolutely
+   positioned against the container's padding box, so they ignore this padding and handle the insets themselves. */
+.yarl__root .yarl__container {
+  padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+}
+/* With the Thumbnails plugin the strip below the container already absorbs --safe-bottom. */
+.yarl__root .yarl__thumbnails_wrapper .yarl__container {
+  padding-bottom: 0;
 }
 
 
