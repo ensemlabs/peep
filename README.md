@@ -8,9 +8,9 @@
 
 <p align="center"><a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a></p>
 
-<p align="center"><img src="docs/images/chat-agent-demo.png" alt="Peep showing a demo agent run: a Thought row, markdown and inline tool rows" width="820"></p>
+<p align="center"><img src="docs/images/hero-dark.jpg" alt="Peep in dark theme: a prompt, a Thought row, a plan, tool and sub-agent rows, and a gallery of five AI-generated images" width="100%"></p>
 
-<p align="center"><sub>Peep, by Ensemble Labs</sub></p>
+<p align="center"><sub><i>One agent run, live: thinking, a plan, tools, a sub-agent and generated images. Demo media were made with Gemini.</i></sub></p>
 
 ## What is Peep
 
@@ -29,6 +29,8 @@ without a model.
 - Per-model thinking levels (Off, Low, High, ...) defined in your config, a Stop button, and replies that keep
   running if you close the tab.
 - Attach images, video, audio and files; browse images in a zoom lightbox.
+- The demo you see in the screenshots uses real AI output: the pictures were generated with Gemini and the short clip is
+  assembled from them.
 
 **Know where you are**
 - A context gauge shows how much of the model's context window is used, with a breakdown and cache tokens.
@@ -46,15 +48,33 @@ without a model.
 
 ## Screenshots
 
-<p align="center">
-  <img src="docs/images/chat-code.png" alt="Light theme: Peep greeting, suggestions and the conversation list" width="470">
-  <img src="docs/images/chat-dark.png" alt="Dark theme: inline tool rows and an image gallery" width="470">
-</p>
-<p align="center">
-  <img src="docs/images/peep-empty.png" alt="A new chat: Peep says hello" width="360">
-  <img src="docs/images/peep-states.png" alt="Peep poses" width="260">
-  <img src="docs/images/mobile-chat.png" alt="Phone layout, dark theme" width="150">
-</p>
+<table>
+<tr>
+<td width="50%" valign="top"><img src="docs/images/hero-light.jpg" alt="Light theme: a demo agent run with a Thought row, plan, tool rows and an image gallery" width="100%"><br><b>Light and dark</b><br><sub>Both themes, same layout.</sub></td>
+<td width="50%" valign="top"><img src="docs/images/gallery-lightbox.jpg" alt="Image lightbox on a sticker sheet of the Peep mascot, with thumbnails and zoom" width="100%"><br><b>Gallery and lightbox</b><br><sub>Zoom, step through, download.</sub></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><img src="docs/images/empty-peep.jpg" alt="A new chat: Peep greets the user above the composer and suggestion cards" width="100%"><br><b>A new chat</b><br><sub>Peep says hello; one tap to start.</sub></td>
+<td width="50%" valign="top"><img src="docs/images/thinking-live.jpg" alt="The Thinking row streaming its reasoning live, with a running spinner in the sidebar" width="100%"><br><b>Live thinking</b><br><sub>Reasoning streams in as it happens.</sub></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><img src="docs/images/context-ring.jpg" alt="Context ring popover: token breakdown, last response and conversation totals" width="100%"><br><b>Context ring</b><br><sub>See what fills the context window.</sub></td>
+<td width="50%" valign="top"><img src="docs/images/video-clip.jpg" alt="A video card playing an 8-second clip in the conversation" width="100%"><br><b>Video in the flow</b><br><sub>Seekable player, download included.</sub></td>
+</tr>
+<tr>
+<td colspan="2" align="center" valign="top"><img src="docs/images/integrations.jpg" alt="Settings, Plugins and Skills tab with skill packages and MCP servers" width="50%"><br><b>Plugins &amp; Skills</b><br><sub>Stored for a future agent.</sub></td>
+</tr>
+</table>
+
+**On your phone**
+
+<table>
+<tr>
+<td align="center" valign="top"><img src="docs/images/mobile-empty.jpg" alt="Phone, dark theme: new chat with Peep" width="260"><br><b>New chat</b><br><sub>Dark theme.</sub></td>
+<td align="center" valign="top"><img src="docs/images/mobile-chat.jpg" alt="Phone, light theme: demo run with tool rows and gallery" width="260"><br><b>Conversation</b><br><sub>Rows and media fit the screen.</sub></td>
+<td align="center" valign="top"><img src="docs/images/mobile-drawer.jpg" alt="Phone: the sidebar drawer with pinned, unread and failed chats" width="260"><br><b>Drawer</b><br><sub>Search, pin, status dots.</sub></td>
+</tr>
+</table>
 
 ## Quick start
 
