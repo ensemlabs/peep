@@ -15,35 +15,35 @@
    "op": "delta",
    "part_id": "think1",
    "field": "text",
-   "text": "A launch kit needs a look first, then assets that all feel like one brand. "
+   "text": "The user wants a set of images and a short clip for our chick mascot. "
   },
   {
    "after_ms": 700,
    "op": "delta",
    "part_id": "think1",
    "field": "text",
-   "text": "I should read the brand guide before generating anything: the name, the palette, the tone. "
+   "text": "First I should understand the mascot, so I'll read the brand guide: the name, the colours, the tone. "
   },
   {
    "after_ms": 700,
    "op": "delta",
    "part_id": "think1",
    "field": "text",
-   "text": "A cohesive mascot series works best when every image repeats the same character and the same soft lighting. "
+   "text": "A few mood references will help me keep the look cosy and friendly. "
   },
   {
    "after_ms": 700,
    "op": "delta",
    "part_id": "think1",
    "field": "text",
-   "text": "Plan: collect mood references, write a tagline, generate five images (hero, night coding, sticker sheet, poster, morning scene), "
+   "text": "Then I'll draw five images in one consistent style, "
   },
   {
    "after_ms": 700,
    "op": "delta",
    "part_id": "think1",
    "field": "text",
-   "text": "then a short promo clip of the mascot waving, and a small sound to go with it."
+   "text": "stitch them into a short clip, and add a soft chime to go with it."
   },
   {
    "after_ms": 500,
@@ -67,7 +67,7 @@
    "op": "delta",
    "part_id": "plan",
    "field": "text",
-   "text": "Here is the plan for the **Peep** launch kit:\n\n"
+   "text": "Here is what I'll do:\n\n"
   },
   {
    "after_ms": 140,
@@ -81,28 +81,28 @@
    "op": "delta",
    "part_id": "plan",
    "field": "text",
-   "text": "2. Gather mood references and a tagline\n"
+   "text": "2. Gather a few mood references\n"
   },
   {
    "after_ms": 140,
    "op": "delta",
    "part_id": "plan",
    "field": "text",
-   "text": "3. Generate five mascot images\n"
+   "text": "3. Draw 5 images in one consistent style\n"
   },
   {
    "after_ms": 140,
    "op": "delta",
    "part_id": "plan",
    "field": "text",
-   "text": "4. Render a short promo clip\n"
+   "text": "4. Stitch them into a short clip\n"
   },
   {
    "after_ms": 140,
    "op": "delta",
    "part_id": "plan",
    "field": "text",
-   "text": "5. Add a soft notification chime\n"
+   "text": "5. Add a soft chime\n"
   },
   {
    "after_ms": 500,
@@ -212,7 +212,7 @@
     "id": "sa2",
     "type": "subagent",
     "name": "copywriter",
-    "task": "Suggest a tagline for the launch.",
+    "task": "Suggest a short tagline for the mascot.",
     "parts": [],
     "status": "running"
    },
@@ -440,91 +440,105 @@
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "The **Peep** launch kit is ready. The five images are AI-gen"
+   "text": "Here are 5 images of the chick mascot and a short clip made "
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "erated with Gemini. The promo clip is assembled from those i"
+   "text": "from them. The images are AI-generated with Gemini; the clip"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "mages (slow zoom with crossfades), and the chime is a synthe"
+   "text": " is assembled from those images (slow zoom with crossfades),"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "sized sound, not a recording.\n\n| Asset | File | Use |\n"
+   "text": " and the chime is a synthesized sound, not a recording.\n\n"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "|---|---|---|\n"
+   "text": "| Asset | File | Use |\n|---|---|---|\n"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "| Hero on laptop | `kit/hero.jpg` | Landing page header |\n"
+   "text": "| Chick on a laptop | `images/hero.jpg` | Landing page heade"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "| Night coding | `kit/night.jpg` | Blog and social cover |\n"
+   "text": "r |\n"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "| Sticker sheet | `kit/stickers.jpg` | Community swag |\n"
+   "text": "| Coding at night | `images/night.jpg` | Blog and social cov"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "| Minimal poster | `kit/poster.jpg` | Open Graph image |\n"
+   "text": "er |\n"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "| Morning scene | `kit/morning.jpg` | Newsletter banner |\n"
+   "text": "| Sticker sheet | `images/stickers.jpg` | Community swag |\n"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "| Promo clip (assembled from the images) | `kit/promo.mp4` |"
+   "text": "| Minimal poster | `images/poster.jpg` | Share image |\n"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": " Launch post (8 s) |\n"
+   "text": "| Morning scene | `images/morning.jpg` | Newsletter banner |\n"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "| Chime | `kit/chime.mp3` | Notification sound |\n\n"
+   "text": "| Short clip (assembled from the images) | `clips/peep.mp4` "
+  },
+  {
+   "after_ms": 110,
+   "op": "delta",
+   "part_id": "final",
+   "field": "text",
+   "text": "| Social post (8 s) |\n"
+  },
+  {
+   "after_ms": 110,
+   "op": "delta",
+   "part_id": "final",
+   "field": "text",
+   "text": "| Chime | `sounds/chime.mp3` | Notification sound |\n\n"
   },
   {
    "after_ms": 110,
@@ -566,21 +580,21 @@
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "<meta property=\"og:image\" content=\"https://example.com/kit/p"
+   "text": "<meta property=\"og:image\" content=\"https://example.com/image"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "oster.jpg\" />\n<meta name=\"theme-color\" content=\"#FFD54A\" />\n"
+   "text": "s/poster.jpg\" />\n"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "```\n"
+   "text": "<meta name=\"theme-color\" content=\"#FFD54A\" />\n```\n"
   }
  ]
 }

@@ -1,7 +1,7 @@
 # Replay assets
 
 Binary assets used by the `replay:*` fixtures (`../fixtures/*.json` reference them as `"asset:<filename>"`).
-`agent-demo` tells the story of a launch kit for "Peep", a yellow chick mascot.
+`agent-demo` tells a simple story: draw a set of images and make a short clip for "Peep", our yellow chick mascot.
 
 ## Provenance
 

@@ -153,6 +153,8 @@ async def test_agent_demo_run_builds_expected_tree(make_client):
     final = parts[7]["text"]
     assert "```html" in final and "| Asset | File | Use |" in final and "AI-generated" in final
     assert "assembled from" in final and "rendered with Gemini" not in final
+    assert final.startswith("Here are 5 images of the chick mascot and a short clip made from them.")
+    assert "launch" not in json.dumps(parts).lower() and "kit" not in json.dumps(parts).lower()
     assert asst["content"].endswith(final)
 
     # every stored file is served to the owner, with working ranges
