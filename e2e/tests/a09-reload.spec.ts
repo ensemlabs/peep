@@ -43,8 +43,10 @@ test('A9: reload mid-stream resumes and completes; reload after done restores ev
   await waitAssistantDone(page)
   const afterResume = await topLevelCounts(page)
   const stored = await partTypeCounts(page)
-  expect(stored).toMatchObject({ thinking: 1, tool: 6, subagent: 2 })
-  expect(afterResume).toMatchObject({ thinking: 1, tool: 5, subagent: 1 })
+  // Launch-kit demo: read_file, generate_images, make_clip, make_chime at the top level, plus web_search
+  // nested in the art-director sub-agent (which also nests the copywriter sub-agent).
+  expect(stored).toMatchObject({ thinking: 1, tool: 5, subagent: 2 })
+  expect(afterResume).toMatchObject({ thinking: 1, tool: 4, subagent: 1 })
 
   // Reload after done: identical part counts, the sidebar lists the conversation.
   await page.reload()

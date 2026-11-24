@@ -10,20 +10,18 @@ test('A8: replay:agent-demo renders thinking, tool cards, nested sub-agents, gal
   // Thinking block.
   await expect(msg.getByTestId('step-thinking')).toHaveCount(1)
 
-  // >= 4 tool cards; one opens/closes and shows its JSON input and JSON output.
+  // >= 4 tool cards; one opens/closes and shows its JSON input and its output.
   const tools = msg.locator('[data-testid="step-tool"]')
   expect(await tools.count()).toBeGreaterThanOrEqual(4)
-  const tests = tools.filter({ hasText: 'run_tests' })
-  await expect(tests).toHaveAttribute('data-state', 'closed')
-  await openStep(tests)
-  const input = tests.locator('[data-testid="code-block"]').first()
+  const images = tools.filter({ hasText: 'generate_images' })
+  await expect(images).toHaveAttribute('data-state', 'closed')
+  await openStep(images)
+  const input = images.locator('[data-testid="code-block"]').first()
   await expect(input.locator('span.font-mono').first()).toHaveText('json')
-  await expect(input).toContainText('"command"')
-  const output = tests.getByTestId('tool-output')
-  await expect(output.locator('span.font-mono').first()).toHaveText('json')
-  await expect(output).toContainText('"passed": 7')
-  await tests.getByTestId('step-toggle').first().click()
-  await expect(tests).toHaveAttribute('data-state', 'closed')
+  await expect(input).toContainText('"prompts"')
+  await expect(images.getByTestId('tool-output')).toContainText('5 images generated with Gemini')
+  await images.getByTestId('step-toggle').first().click()
+  await expect(images).toHaveAttribute('data-state', 'closed')
 
   // Sub-agent (2 levels): contains a tool card and another sub-agent, which contains text.
   const outer = msg.getByTestId('step-subagent').first()
@@ -32,7 +30,7 @@ test('A8: replay:agent-demo renders thinking, tool cards, nested sub-agents, gal
   const inner = outer.getByTestId('step-subagent')
   await expect(inner).toHaveCount(1)
   await openStep(inner)
-  await expect(inner.getByTestId('markdown')).toContainText('Miller-Rabin')
+  await expect(inner.getByTestId('markdown')).toContainText('See everything your agent does')
 
   // Results are shown under the tool row (a tool-group), no expanding needed. Gallery of 5 + lightbox next/thumbnails.
   const group = (name: string) => msg.getByTestId('tool-group').filter({ hasText: name })
@@ -52,6 +50,6 @@ test('A8: replay:agent-demo renders thinking, tool cards, nested sub-agents, gal
   await expect(lb).toHaveCount(0)
 
   // Video and audio belong to their tool cards.
-  await expect(group('render_video').getByTestId('video-card').first()).toBeVisible()
-  await expect(group('text_to_speech').getByTestId('audio-card')).toBeVisible()
+  await expect(group('make_clip').getByTestId('video-card').first()).toBeVisible()
+  await expect(group('make_chime').getByTestId('audio-card')).toBeVisible()
 })

@@ -645,7 +645,7 @@ uses, so the UI cannot tell them apart. This is the quickest way to see how a re
     {"after_ms": 0, "op": "delta", "part_id": "think1", "field": "text", "text": "..."},
     {"after_ms": 600, "op": "update", "part_id": "think1", "patch": {"status": "done"}},
     {"after_ms": 600, "op": "part", "parent": "sa1", "part": {"id": "sa1-search", "type": "tool", "name": "web_search", "input": {}, "status": "running"}},
-    {"after_ms": 400, "op": "update", "part_id": "imgs", "patch": {"status": "done", "files": ["asset:gallery-1.png"]}}
+    {"after_ms": 400, "op": "update", "part_id": "imgs", "patch": {"status": "done", "files": ["asset:gallery-1.jpg"]}}
   ]
 }
 ```

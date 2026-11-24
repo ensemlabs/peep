@@ -19,9 +19,11 @@ Users chat with the one `active` model from `config/models.yaml`. With `dev.mode
 shows a model picker with every configured model plus the `replay:*` demo models (`REPLAY_ENABLED=true`). Demo
 models replay a recorded event stream and call no LLM.
 
-- `replay:agent-demo` shows a full agent run: a thinking block, markdown, two tool calls (`read_file`,
-  `run_tests`), a `researcher` sub-agent with its own tool and a nested `summarizer` sub-agent, a tool that
-  returns a 5-image gallery, a tool that returns video (WebM and MP4), and a tool that returns audio.
+- `replay:agent-demo` replays an agent building a launch kit for Peep: a thinking block, a plan, `read_file`
+  (the brand guide), an `art-director` sub-agent with a nested `web_search` tool and a nested `copywriter`
+  sub-agent, `generate_images` returning 5 real Gemini-generated images, `make_clip` returning a short promo
+  clip assembled from those images (WebM and MP4), `make_chime` returning a synthesized chime, and a final
+  summary with a table and a code block.
 - `replay:error-demo` writes some text, runs a `deploy` tool, then ends with an error message.
 
 ## Thinking levels
