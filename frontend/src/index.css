@@ -3,14 +3,14 @@
 :root {
   color-scheme: light;
   --bg: #ffffff;
-  --surface: #f7f7f8;
-  --surface-2: #efeff1;
-  --hover: #ececee;
-  --fg: #18181b;
-  --muted: #71717a;
-  --line: #e4e4e7;
-  --accent: #18181b;
-  --accent-fg: #fafafa;
+  --surface: #f9f9f9;
+  --surface-2: #f4f4f4;
+  --hover: #ececec;
+  --fg: #0d0d0d;
+  --muted: #5d5d5d;
+  --line: #e5e5e5;
+  --accent: #0d0d0d;
+  --accent-fg: #ffffff;
   --danger: #dc2626;
   --success: #16a34a;
   --logo-ink: #0f1b3d;
@@ -18,15 +18,15 @@
 /* Dark palette: neutral near-black surfaces (no blue tint, not pure black). */
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --bg: #1b1b1b;
-  --surface: #232323;
-  --surface-2: #2c2c2c;
-  --hover: #333333;
+  --bg: #212121;
+  --surface: #171717;
+  --surface-2: #303030;
+  --hover: #2a2a2a;
   --fg: #ececec;
-  --muted: #a3a3a3;
-  --line: #363636;
+  --muted: #b4b4b4;
+  --line: #3a3a3a;
   --accent: #ececec;
-  --accent-fg: #1b1b1b;
+  --accent-fg: #212121;
   --danger: #f87171;
   --success: #4ade80;
   --logo-ink: #f1f5ff;
@@ -35,15 +35,15 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
     color-scheme: dark;
-    --bg: #1b1b1b;
-    --surface: #232323;
-    --surface-2: #2c2c2c;
-    --hover: #333333;
+    --bg: #212121;
+    --surface: #171717;
+    --surface-2: #303030;
+    --hover: #2a2a2a;
     --fg: #ececec;
-    --muted: #a3a3a3;
-    --line: #363636;
+    --muted: #b4b4b4;
+    --line: #3a3a3a;
     --accent: #ececec;
-    --accent-fg: #1b1b1b;
+    --accent-fg: #212121;
     --danger: #f87171;
     --success: #4ade80;
     --logo-ink: #f1f5ff;
@@ -73,14 +73,56 @@
   --color-accent-fg: var(--accent-fg);
   --color-danger: var(--danger);
   --color-success: var(--success);
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
 }
 
+/* Safe areas as variables, so they can be overridden (and simulated) in one place. */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
 html,
 body,
 #root {
   height: 100%;
+}
+/* The app shell tracks the visual viewport (set from JS while the on-screen keyboard is open). */
+.h-app {
+  height: 100vh;
+}
+.min-h-app {
+  min-height: 100vh;
+}
+@supports (height: 100dvh) {
+  .h-app {
+    height: var(--vvh, 100dvh);
+  }
+  .min-h-app {
+    min-height: 100dvh;
+  }
+}
+/* iOS zooms the page when a focused field is under 16px: keep every field at 16px on touch/phones. */
+@media (max-width: 767px), (hover: none) and (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+@media (hover: none) {
+  button:active:not(:disabled),
+  a:active {
+    opacity: 0.7;
+  }
 }
 body {
   margin: 0;
@@ -142,8 +184,8 @@ button:disabled {
 
 /* Markdown */
 .md {
-  line-height: 1.7;
-  font-size: 0.95rem;
+  line-height: 1.75;
+  font-size: 1rem;
   overflow-wrap: anywhere;
 }
 .md > :first-child {
@@ -264,178 +306,81 @@ button:disabled {
   .msg-enter { animation: none; }
 }
 
-/* Pip */
-.mascot-pip .pip-body{transform-origin:50% 100%}
-.mascot-pip .pip-antenna{transform-origin:50% 100%}
-.mascot-pip .pip-armL,.mascot-pip .pip-armR{transform-origin:50% 15%}
-/* idle */
-.mascot-pip.mascot--idle .pip-float{animation:pip-bob 3s ease-in-out infinite}
-.mascot-pip.mascot--idle .pip-shadow{animation:pip-sh 3s ease-in-out infinite}
-.mascot-pip.mascot--idle .pip-eyes{animation:pip-blink 4.6s infinite}
-.mascot-pip.mascot--idle .pip-glow{animation:pip-glow 3s ease-in-out infinite}
-/* thinking */
-.mascot-pip.mascot--thinking .pip-body{transform:rotate(-3deg)}
-.mascot-pip.mascot--thinking .pip-float{animation:pip-bob 4s ease-in-out infinite}
-.mascot-pip.mascot--thinking .pip-antenna{animation:pip-sway 1.6s ease-in-out infinite}
-.mascot-pip.mascot--thinking .pip-bulb{animation:pip-pulse .8s ease-in-out infinite}
-.mascot-pip.mascot--thinking .pip-glow{animation:pip-glow .8s ease-in-out infinite}
-.mascot-pip.mascot--thinking .pip-gaze{animation:pip-look 2.4s ease-in-out infinite}
-.mascot-pip.mascot--thinking .pip-eyes{animation:pip-blink 4.6s infinite}
-/* working */
-.mascot-pip.mascot--working .pip-float{animation:pip-bob .45s ease-in-out infinite}
-.mascot-pip.mascot--working .pip-shadow{animation:pip-sh .45s ease-in-out infinite}
-.mascot-pip.mascot--working .pip-armL{animation:pip-armL .3s ease-in-out infinite alternate}
-.mascot-pip.mascot--working .pip-armR{animation:pip-armR .3s ease-in-out .15s infinite alternate}
-.mascot-pip.mascot--working .pip-bulb{animation:pip-flash .4s steps(2,jump-none) infinite}
-.mascot-pip.mascot--working .pip-antenna{animation:pip-sway .35s ease-in-out infinite}
-.mascot-pip.mascot--working .pip-gaze{animation:pip-scan .7s ease-in-out infinite}
-/* error */
-.mascot-pip.mascot--error .pip-body{transform:translateY(2px) scale(1.03,.93)}
-.mascot-pip.mascot--error .pip-antenna{transform:rotate(-48deg)}
-.mascot-pip.mascot--error .pip-bulb{opacity:.6}
-.mascot-pip.mascot--error .pip-glow{opacity:0}
-.mascot-pip.mascot--error .pip-armL{transform:rotate(14deg)}
-.mascot-pip.mascot--error .pip-armR{transform:rotate(-14deg)}
-.mascot-pip.mascot--error .pip-float{animation:pip-shake 2.6s ease-in-out infinite}
-@keyframes pip-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.5px)}}
-@keyframes pip-sh{0%,100%{transform:scaleX(1);opacity:.2}50%{transform:scaleX(.82);opacity:.12}}
-@keyframes pip-glow{0%,100%{opacity:.25;transform:scale(.9)}50%{opacity:.6;transform:scale(1.05)}}
-@keyframes pip-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
-@keyframes pip-sway{0%,100%{transform:rotate(-10deg)}50%{transform:rotate(10deg)}}
-@keyframes pip-look{0%,100%{transform:translate(-2px,-2px)}50%{transform:translate(2px,-2px)}}
-@keyframes pip-scan{0%,100%{transform:translate(-1.5px,1px)}50%{transform:translate(1.5px,1px)}}
-@keyframes pip-armL{from{transform:rotate(10deg)}to{transform:rotate(-40deg)}}
-@keyframes pip-armR{from{transform:rotate(-10deg)}to{transform:rotate(40deg)}}
-@keyframes pip-flash{0%{opacity:1}50%{opacity:.35}}
-@keyframes pip-shake{0%,70%,100%{transform:translateX(0)}74%{transform:translateX(-1.5px)}80%{transform:translateX(1.5px)}86%{transform:translateX(-1px)}92%{transform:translateX(0)}}
-/* Pip: shared bits */
-.mascot-pip{overflow:visible}
-.mascot-pip *{transform-box:fill-box;transform-origin:center}
-.mascot-pip [transform]{transform-box:view-box;transform-origin:0 0}
-.mascot-pip .pip-face-err{display:none}
-.mascot-pip.mascot--error .pip-face-ok{display:none}
-.mascot-pip.mascot--error .pip-face-err{display:inline}
-.mascot-pip .pip-dots{opacity:0}
-.mascot-pip.mascot--thinking .pip-dots{opacity:1}
-.mascot-pip.mascot--thinking .pip-dots circle{animation:pip-dot 1.2s ease-in-out infinite}
-.mascot-pip .pip-dots .d2{animation-delay:.2s!important}
-.mascot-pip .pip-dots .d3{animation-delay:.4s!important}
-@keyframes pip-dot{0%,100%{opacity:.2;transform:scale(.7)}50%{opacity:1;transform:scale(1.15)}}
-@keyframes pip-blink{0%,90%,100%{transform:scaleY(1)}94%{transform:scaleY(.08)}}
-@media (prefers-reduced-motion:reduce){.mascot-pip,.mascot-pip *{animation:none!important}}
+/* peep */
+.mascot-peep{overflow:visible}
+.mascot-peep *{transform-box:fill-box;transform-origin:center}
+.mascot-peep [transform]{transform-box:view-box;transform-origin:0 0}
+.mascot-peep .peep-float{transform-origin:50% 100%}
+.mascot-peep .peep-body{transform-origin:50% 100%}
+.mascot-peep .peep-limbL{transform-origin:50% 10%}
+.mascot-peep .peep-limbR{transform-origin:50% 10%}
+.mascot-peep .peep-extra{transform-origin:50% 100%}
+.mascot-peep .peep-face-err{display:none}
+.mascot-peep .peep-happy,.mascot-peep .peep-open{opacity:0}
+.mascot-peep.mascot--error .peep-face-ok,.mascot-peep.mascot--error .peep-gaze,.mascot-peep.mascot--error .peep-smile,.mascot-peep.mascot--error .peep-happy,.mascot-peep.mascot--error .peep-open{display:none}
+.mascot-peep.mascot--error .peep-face-err{display:inline}
+.mascot-peep .peep-dots{opacity:0}
+.mascot-peep.mascot--pending .peep-dots{opacity:1}
+.mascot-peep.mascot--pending .peep-dots circle{animation:peep-dot 1.2s ease-in-out infinite}
+.mascot-peep .peep-dots .d2{animation-delay:.2s!important}
+.mascot-peep .peep-dots .d3{animation-delay:.4s!important}
+@keyframes peep-dot{0%,100%{transform:scale(.7);opacity:.2}50%{transform:scale(1.15);opacity:1}}
+@keyframes peep-g-float{0%{transform:translateY(3px) scale(.2);opacity:0}3%{opacity:1}18%{transform:translateY(0) scale(1.1,.9);opacity:1}27%{transform:scale(.96,1.06)}34%{transform:scale(1)}40%{transform:scale(1.05,.92)}50%{transform:translateY(-5px) scale(.97,1.04)}60%{transform:translateY(0) scale(1.04,.94)}67%,100%{transform:scale(1)}}
+@keyframes peep-i-float{0%,51%{transform:translateY(0) scale(1)}54%{transform:translateY(0) scale(1.06,.92)}57%{transform:translateY(-4px) scale(.98,1.02)}60%{transform:translateY(0) scale(1.05,.94)}62%{transform:translateY(-2px) scale(1)}64%,100%{transform:translateY(0) scale(1)}70%{transform:translateY(0)}72%{transform:translateY(-2px)}75%{transform:translateY(0)}77%{transform:translateY(-2px)}80%{transform:translateY(0)}}
+.mascot-peep.mascot--greet .peep-float{animation:peep-g-float 2s ease-in-out both, peep-i-float 10s ease-in-out 2s infinite}
+.mascot-peep.mascot--idle .peep-float{animation:peep-i-float 10s ease-in-out infinite}
+@keyframes peep-i-gaze{0%,23%{transform:translate(0,0)}27%,31%{transform:translate(-2.4px,0)}35%,39%{transform:translate(2.4px,-.6px)}43%,100%{transform:translate(0,0)}}
+.mascot-peep.mascot--greet .peep-gaze{animation:peep-i-gaze 10s ease-in-out 2s infinite}
+.mascot-peep.mascot--idle .peep-gaze{animation:peep-i-gaze 10s ease-in-out infinite}
+@keyframes peep-g-eyes{0%,40%{opacity:1}42%,92%{opacity:0}95%,100%{opacity:1}}
+@keyframes peep-i-eyes{0%,13%{transform:scaleY(1)}15%{transform:scaleY(.08)}17%,46%{transform:scaleY(1)}48%{transform:scaleY(.08)}50%,100%{transform:scaleY(1)}}
+.mascot-peep.mascot--greet .peep-eyes{animation:peep-g-eyes 2s ease-in-out both, peep-i-eyes 10s ease-in-out 2s infinite}
+.mascot-peep.mascot--idle .peep-eyes{animation:peep-i-eyes 10s ease-in-out infinite}
+@keyframes peep-g-happy{0%,40%{opacity:0}42%,92%{opacity:1}95%,100%{opacity:0}}
+.mascot-peep.mascot--greet .peep-happy{animation:peep-g-happy 2s ease-in-out both}
+@keyframes peep-g-smile{0%,40%{opacity:1}42%,92%{opacity:0}95%,100%{opacity:1}}
+.mascot-peep.mascot--greet .peep-smile{animation:peep-g-smile 2s ease-in-out both}
+@keyframes peep-g-open{0%,40%{opacity:0}42%,92%{opacity:1}95%,100%{opacity:0}}
+.mascot-peep.mascot--greet .peep-open{animation:peep-g-open 2s ease-in-out both}
+@keyframes peep-i-body{0%,100%{transform:scale(1.02,.98)}50%{transform:scale(.985,1.025)}}
+.mascot-peep.mascot--greet .peep-body{animation:peep-i-body 4s ease-in-out 2s infinite}
+.mascot-peep.mascot--idle .peep-body{animation:peep-i-body 4s ease-in-out infinite}
+@keyframes peep-g-limbR{0%,44%{transform:rotate(0)}50%{transform:rotate(-165deg)}58%{transform:rotate(-148deg)}66%{transform:rotate(-165deg)}74%{transform:rotate(-148deg)}82%{transform:rotate(-165deg)}92%{transform:rotate(-148deg)}98%,100%{transform:rotate(0)}}
+@keyframes peep-i-limbR{0%,67%{transform:rotate(0)}69%{transform:rotate(-24deg)}71%{transform:rotate(0)}73%{transform:rotate(-24deg)}75%{transform:rotate(0)}77%{transform:rotate(-24deg)}79%{transform:rotate(0)}81%{transform:rotate(-24deg)}83%{transform:rotate(0)}100%{transform:rotate(0)}}
+.mascot-peep.mascot--greet .peep-limbR{animation:peep-g-limbR 2s ease-in-out both, peep-i-limbR 10s ease-in-out 2s infinite}
+.mascot-peep.mascot--idle .peep-limbR{animation:peep-i-limbR 10s ease-in-out infinite}
+@keyframes peep-i-limbL{0%,67%{transform:rotate(0)}69%{transform:rotate(24deg)}71%{transform:rotate(0)}73%{transform:rotate(24deg)}75%{transform:rotate(0)}77%{transform:rotate(24deg)}79%{transform:rotate(0)}81%{transform:rotate(24deg)}83%{transform:rotate(0)}100%{transform:rotate(0)}}
+.mascot-peep.mascot--greet .peep-limbL{animation:peep-i-limbL 10s ease-in-out 2s infinite}
+.mascot-peep.mascot--idle .peep-limbL{animation:peep-i-limbL 10s ease-in-out infinite}
+@keyframes peep-g-extra{0%,69%{transform:rotate(0)}72%{transform:rotate(12deg)}76%{transform:rotate(-12deg)}80%{transform:rotate(12deg)}85%{transform:rotate(-12deg)}89%{transform:rotate(12deg)}93%{transform:rotate(-12deg)}95%,100%{transform:rotate(0)}}
+@keyframes peep-i-extra{0%,83%{transform:rotate(0)}85%{transform:rotate(12deg)}87%{transform:rotate(-12deg)}89%{transform:rotate(12deg)}92%{transform:rotate(-12deg)}94%{transform:rotate(12deg)}96%{transform:rotate(-12deg)}97%,100%{transform:rotate(0)}}
+.mascot-peep.mascot--greet .peep-extra{animation:peep-g-extra 2s ease-in-out both, peep-i-extra 10s ease-in-out 2s infinite}
+.mascot-peep.mascot--idle .peep-extra{animation:peep-i-extra 10s ease-in-out infinite}
+@keyframes peep-p-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+.mascot-peep.mascot--pending .peep-float{animation:peep-p-float 1.6s ease-in-out infinite}
+@keyframes peep-p-gaze{0%,100%{transform:translate(0,-2px)}}
+.mascot-peep.mascot--pending .peep-gaze{animation:peep-p-gaze 1.6s ease-in-out infinite}
+@keyframes peep-p-body{0%,20%{transform:rotate(-9deg)}40%,60%{transform:rotate(9deg)}80%,100%{transform:rotate(-9deg)}}
+.mascot-peep.mascot--pending .peep-body{animation:peep-p-body 2.4s ease-in-out infinite}
+@keyframes peep-p-extra{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}
+.mascot-peep.mascot--pending .peep-extra{animation:peep-p-extra 0.8s ease-in-out infinite}
+.mascot-peep.mascot--error .peep-body{transform:rotate(9deg) scale(1.05,.92)}
+.mascot-peep.mascot--error .peep-limbL{transform:rotate(-24deg)}
+.mascot-peep.mascot--error .peep-limbR{transform:rotate(24deg)}
+.mascot-peep.mascot--error .peep-extra{transform:rotate(30deg)}
+@keyframes peep-e-float{0%,100%{transform:translateX(-.5px)}50%{transform:translateX(.5px)}}
+.mascot-peep.mascot--error .peep-float{animation:peep-e-float 1.2s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.mascot-peep,.mascot-peep *{animation:none!important}}
 
 .mascot{flex-shrink:0}
 .mascot--still,.mascot--still *{animation:none!important}
 
-@keyframes verb-fade {
-  from { opacity: 0; transform: translateY(2px); }
-  to { opacity: 1; transform: none; }
-}
-.verb-fade {
-  animation: verb-fade 0.4s ease-out both;
-}
-@media (prefers-reduced-motion: reduce) {
-  .verb-fade { animation: none; }
-}
 
 /* KaTeX: wide display equations scroll inside their own block, never the page */
 .md .katex-display {
   overflow-x: auto;
   overflow-y: hidden;
   max-width: 100%;
-}
-
-/* Pip patrols the run-status track: transform-only motion in a fixed-size, clipped box. */
-@property --pip-gait {
-  syntax: '<number>';
-  inherits: true;
-  initial-value: 1;
-}
-.pip-track {
-  position: relative;
-  flex-shrink: 0;
-  width: 140px;
-  height: 36px;
-  overflow: hidden;
-  contain: layout paint;
-  --pip-run: 112px;
-}
-@media (max-width: 767px) {
-  .pip-track {
-    width: 84px;
-    --pip-run: 56px;
-  }
-}
-.pip-walker {
-  position: absolute;
-  left: 0;
-  top: 8px;
-  width: 26px;
-  height: 26px;
-  will-change: transform;
-  animation: pip-patrol 14s linear infinite;
-}
-.pip-hopper {
-  display: block;
-  animation: pip-hop 14s ease-in-out infinite;
-}
-.pip-walker[data-walking='false'],
-.pip-walker[data-walking='false'] .pip-hopper {
-  animation-play-state: paused;
-}
-/* walk right, pause and look around, turn, walk left, pause, turn */
-@keyframes pip-patrol {
-  0% { transform: translateX(0) scaleX(1); --pip-gait: 1; }
-  34% { transform: translateX(var(--pip-run)) scaleX(1); --pip-gait: 1; }
-  36% { transform: translateX(var(--pip-run)) scaleX(1); --pip-gait: 0; }
-  41% { transform: translateX(var(--pip-run)) scaleX(1); --pip-gait: 0; }
-  41.01% { transform: translateX(var(--pip-run)) scaleX(-1); --pip-gait: 0; }
-  43% { transform: translateX(var(--pip-run)) scaleX(-1); --pip-gait: 1; }
-  75% { transform: translateX(0) scaleX(-1); --pip-gait: 1; }
-  77% { transform: translateX(0) scaleX(-1); --pip-gait: 0; }
-  82% { transform: translateX(0) scaleX(-1); --pip-gait: 0; }
-  82.01% { transform: translateX(0) scaleX(1); --pip-gait: 0; }
-  84% { transform: translateX(0) scaleX(1); --pip-gait: 1; }
-  100% { transform: translateX(0) scaleX(1); --pip-gait: 1; }
-}
-@keyframes pip-hop {
-  0%, 18%, 23%, 58%, 63%, 100% { transform: translateY(0); }
-  20.5% { transform: translateY(-7px); }
-  60.5% { transform: translateY(-7px); }
-}
-/* gait: feet and arms alternate, the body bobs in step; amplitude follows --pip-gait (0 while paused) */
-.mascot-pip.mascot--walk .pip-float { animation: pip-walkbob 0.5s ease-in-out infinite; }
-.mascot-pip.mascot--walk .pip-footL { animation: pip-step 0.25s ease-in-out infinite alternate; }
-.mascot-pip.mascot--walk .pip-footR { animation: pip-step 0.25s ease-in-out infinite alternate-reverse; }
-.mascot-pip.mascot--walk .pip-armL { animation: pip-swing 0.5s ease-in-out infinite alternate; }
-.mascot-pip.mascot--walk .pip-armR { animation: pip-swing 0.5s ease-in-out infinite alternate-reverse; }
-.mascot-pip.mascot--walk .pip-body { animation: pip-tilt 14s linear infinite; }
-@keyframes pip-walkbob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(calc(var(--pip-gait) * -2px)); }
-}
-@keyframes pip-step {
-  from { transform: translateY(calc(var(--pip-gait) * -2.4px)); }
-  to { transform: translateY(0); }
-}
-@keyframes pip-swing {
-  from { transform: rotate(calc(var(--pip-gait) * 20deg)); }
-  to { transform: rotate(calc(var(--pip-gait) * -20deg)); }
-}
-/* head tilt while it pauses to look around */
-@keyframes pip-tilt {
-  0%, 35% { transform: rotate(0); }
-  37% { transform: rotate(-8deg); }
-  39% { transform: rotate(8deg); }
-  41%, 76% { transform: rotate(0); }
-  78% { transform: rotate(-8deg); }
-  80% { transform: rotate(8deg); }
-  82%, 100% { transform: rotate(0); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .pip-walker, .pip-hopper { animation: none !important; }
-  /* keep only a gentle bulb pulse */
-  .mascot-pip .pip-glow { animation: pip-glow 3s ease-in-out infinite !important; }
 }
 
 /* "Thinking…" shimmer: a highlight sweeps across the text */

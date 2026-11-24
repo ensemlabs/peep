@@ -70,7 +70,7 @@ export function ImageGallery({ images }: { images: FileMeta[] }) {
             {!isLastWithMore && (
               <DownloadLink
                 file={img}
-                className="absolute right-1.5 top-1.5 bg-black/55 text-white opacity-100 hover:bg-black/70 hover:text-white md:opacity-0 md:focus-visible:opacity-100 md:group-hover:opacity-100"
+                className="absolute right-1.5 top-1.5 bg-black/55 text-white opacity-100 hover:bg-black/70 hover:text-white [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:focus-visible:opacity-100 [@media(hover:hover)]:group-hover:opacity-100"
               />
             )}
           </div>

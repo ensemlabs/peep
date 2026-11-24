@@ -13,10 +13,10 @@ const msg = (over: Partial<Message> = {}): Message => ({
 })
 
 describe('assistant hover actions', () => {
-  it('shows copy, time and token usage (≈ for estimates, cache only when reported)', () => {
+  it('shows copy and token usage (≈ for estimates, cache only when reported)', () => {
     renderWithI18n(<MessageView message={msg({ usage: { input_tokens: 1200, output_tokens: 340, reasoning_tokens: null, cache_read_tokens: 900, cache_write_tokens: null, total_tokens: 1540, source: 'estimate' } })} />)
     expect(screen.getByTestId('copy-message')).toBeInTheDocument()
-    expect(screen.getByTestId('message-time')).toBeInTheDocument()
+    expect(screen.queryByTestId('message-time')).toBeNull()
     expect(screen.getByTestId('message-usage')).toHaveTextContent('≈ 1.2k → 340 · cache 900')
   })
   it('omits the approximation and cache when from the provider with null cache', () => {
@@ -63,13 +63,35 @@ describe('empty state greeting', () => {
   })
 })
 
-describe('one Pip only', () => {
-  it('assistant messages have no avatar mascot, streaming or finished', () => {
-    const { rerender } = renderWithI18n(<MessageView message={msg({ status: 'complete' })} />)
-    expect(screen.queryByTestId('mascot')).toBeNull()
-    rerender(<MessageView message={msg({ status: 'streaming', parts: [{ id: 'p', type: 'thinking', text: 'hmm', status: 'running', started_at: '2026-01-01T00:00:00Z' }] })} />)
-    // exactly one Pip: the one in the run-status line
+describe('reply-pending indicator', () => {
+  const streaming = (over: Partial<Message> = {}) => msg({ status: 'streaming', content: '', parts: [], ...over })
+  it('shows one small Peep in the pending state before the first content arrives', () => {
+    renderWithI18n(<MessageView message={streaming()} />)
+    const pending = screen.getByTestId('reply-pending')
+    expect(pending.querySelector('[data-testid=mascot]')).toHaveAttribute('data-state', 'pending')
     expect(screen.getAllByTestId('mascot')).toHaveLength(1)
-    expect(screen.getByTestId('run-status').querySelector('[data-testid=mascot]')).not.toBeNull()
+    expect(screen.queryByTestId('run-status')).toBeNull()
+  })
+  it('disappears as soon as any part appears', () => {
+    const { rerender } = renderWithI18n(<MessageView message={streaming()} />)
+    rerender(<MessageView message={streaming({ parts: [{ id: 't', type: 'thinking', text: '', status: 'running', started_at: '2026-01-01T00:00:00Z' }] })} />)
+    expect(screen.queryByTestId('reply-pending')).toBeNull()
+    expect(screen.queryByTestId('mascot')).toBeNull() // nothing under the thinking row
+  })
+  it('disappears when text content arrives, and is never shown for finished messages', () => {
+    const { rerender } = renderWithI18n(<MessageView message={streaming({ content: 'Hi' })} />)
+    expect(screen.queryByTestId('reply-pending')).toBeNull()
+    rerender(<MessageView message={msg({ status: 'complete' })} />)
+    expect(screen.queryByTestId('mascot')).toBeNull()
+  })
+})
+
+describe('error Peep', () => {
+  it('shows a tiny error Peep next to a failed reply message only', () => {
+    const { rerender } = renderWithI18n(<MessageView message={msg({ status: 'error', error: 'boom' })} />)
+    const err = screen.getByTestId('message-error')
+    expect(err.querySelector('[data-testid=mascot]')).toHaveAttribute('data-state', 'error')
+    rerender(<MessageView message={msg({ status: 'complete' })} />)
+    expect(screen.queryByTestId('mascot')).toBeNull()
   })
 })

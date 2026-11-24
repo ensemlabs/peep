@@ -1,5 +1,5 @@
-import { AlertCircle, Wrench } from 'lucide-react'
 import { useT } from '@/i18n'
+import { cn } from '@/lib/cn'
 import type { ToolPart } from '@/api/types'
 import { CollapsibleStep } from './CollapsibleStep'
 import { CodeBlock } from './CodeBlock'
@@ -53,40 +53,45 @@ export function ToolCard({ part, live }: { part: ToolPart; live: boolean }) {
   const error = part.status === 'error'
   const summary = summarize(part.input)
   const inputText = typeof part.input === 'string' ? part.input : prettyJson(part.input)
+  const verb = running ? t('tool.running') : error ? t('tool.failed') : t('tool.ran')
   return (
-    <CollapsibleStep
-      testId="step-tool"
-      icon={error ? <AlertCircle className="size-4" /> : <Wrench className="size-4" />}
-      title={
-        <>
-          <code className="shrink-0 font-mono text-[13px] font-medium">{part.name}</code>
-          {summary && <span className="truncate text-muted">{summary}</span>}
-        </>
-      }
-      running={running}
-      error={error}
-      elapsedMs={elapsed}
-      defaultOpen={running}
-    >
-      <div className="space-y-3">
-        {part.input != null && (
-          <section>
-            <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-muted">{t('step.input')}</h4>
-            <CodeBlock code={inputText} language={typeof part.input === 'string' ? 'text' : 'json'} className="my-0" />
-          </section>
-        )}
-        <section>
-          <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-muted">{t('step.output')}</h4>
-          {part.output ? (
-            <div className={error ? 'text-danger' : undefined} data-testid="tool-output">
-              <Output output={part.output} live={live && running} />
-            </div>
-          ) : (
-            <p className="text-sm text-muted">{running ? t('step.running') + '…' : t('step.noOutput')}</p>
+    <div data-testid="tool-group">
+      <CollapsibleStep
+        testId="step-tool"
+        title={
+          <span data-testid="tool-label" data-shimmer={running} className={cn('flex min-w-0 items-center gap-1.5', running && 'shimmer-text')}>
+            <span className="shrink-0">{verb}</span>{' '}
+            <code className="shrink-0 font-mono text-[13px]">{part.name}</code>
+            {summary && <>{' '}<span className="truncate opacity-70">· {summary}</span></>}
+            {running && <span aria-hidden>…</span>}
+          </span>
+        }
+        running={running}
+        error={error}
+        elapsedMs={running ? null : elapsed}
+        defaultOpen={running}
+      >
+        <div className="space-y-3">
+          {part.input != null && (
+            <section>
+              <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-muted">{t('step.input')}</h4>
+              <CodeBlock code={inputText} language={typeof part.input === 'string' ? 'text' : 'json'} className="my-0" />
+            </section>
           )}
-        </section>
-        {part.files?.length > 0 && <MediaGrid files={part.files} />}
-      </div>
-    </CollapsibleStep>
+          <section>
+            <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-muted">{t('step.output')}</h4>
+            {part.output ? (
+              <div className={error ? 'text-danger' : undefined} data-testid="tool-output">
+                <Output output={part.output} live={live && running} />
+              </div>
+            ) : (
+              <p className="text-sm text-muted">{running ? t('step.running') + '…' : t('step.noOutput')}</p>
+            )}
+          </section>
+        </div>
+      </CollapsibleStep>
+      {/* What the tool produced is the result: visible without expanding. */}
+      {part.files?.length > 0 && <MediaGrid files={part.files} />}
+    </div>
   )
 }

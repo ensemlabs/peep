@@ -32,21 +32,30 @@ describe('context ring maths', () => {
 })
 
 describe('ContextRing gauge', () => {
-  it('shows only a track and a dot below 1%, with a tooltip', () => {
-    renderWithI18n(<ContextRing data={data({ used_tokens: 500, context_window: 1_000_000 })} draftText=""  />)
-    expect(screen.getByTestId('context-ring-dot')).toBeInTheDocument()
+  it('below 1% shows only the closed track: no arc, no dot', () => {
+    const { container } = renderWithI18n(<ContextRing data={data({ used_tokens: 500, context_window: 1_000_000 })} draftText="" />)
     expect(screen.queryByTestId('context-ring-arc')).toBeNull()
+    expect(screen.queryByTestId('context-ring-dot')).toBeNull()
+    expect(container.querySelectorAll('svg circle')).toHaveLength(1) // just the track
     expect(screen.getByTestId('context-ring')).toHaveAttribute('title', '500 / 1M (0.1%)')
   })
-  it('draws the arc from 1% with the formatted tooltip', () => {
-    renderWithI18n(<ContextRing data={data({ used_tokens: 18_400, context_window: 1_000_000 })} draftText=""  />)
-    expect(screen.getByTestId('context-ring-arc')).toBeInTheDocument()
-    expect(screen.queryByTestId('context-ring-dot')).toBeNull()
+  it('from 1% draws a solid pie sector inside the track, with the formatted tooltip', () => {
+    renderWithI18n(<ContextRing data={data({ used_tokens: 18_400, context_window: 1_000_000 })} draftText="" />)
+    expect(screen.getByTestId('context-ring-arc').tagName.toLowerCase()).toBe('path')
+    expect(screen.getByTestId('context-ring-arc').getAttribute('class')).toContain('fill-')
     expect(screen.getByTestId('context-ring')).toHaveAttribute('title', '18.4k / 1M (1.8%)')
   })
-  it('has neither at 0%', () => {
-    renderWithI18n(<ContextRing data={data({ used_tokens: 0 })} draftText=""  />)
-    expect(screen.queryByTestId('context-ring-dot')).toBeNull()
+  it('never animates (no spinner-like rotation or transition)', () => {
+    const { container } = renderWithI18n(<ContextRing data={data({ used_tokens: 400_000 })} draftText="" />)
+    const html = container.innerHTML
+    expect(html).not.toMatch(/animate-|rotate|transition/)
+  })
+  it('is a full disc at 100%', () => {
+    renderWithI18n(<ContextRing data={data({ used_tokens: 100_000 })} draftText="" />)
+    expect(screen.getByTestId('context-ring-arc').tagName.toLowerCase()).toBe('circle')
+  })
+  it('has no arc at 0%', () => {
+    renderWithI18n(<ContextRing data={data({ used_tokens: 0 })} draftText="" />)
     expect(screen.queryByTestId('context-ring-arc')).toBeNull()
   })
 })

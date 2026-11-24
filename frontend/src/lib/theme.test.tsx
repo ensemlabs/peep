@@ -67,6 +67,17 @@ describe('theme', () => {
   })
 })
 
+describe('theme-color meta', () => {
+  it('follows the resolved theme', () => {
+    document.head.innerHTML = '<meta name="theme-color" content="#ffffff"><meta name="theme-color" content="#212121" media="(prefers-color-scheme: dark)">'
+    setTheme('dark')
+    expect([...document.querySelectorAll('meta[name=theme-color]')].map((m) => m.getAttribute('content'))).toEqual(['#212121', '#212121'])
+    setTheme('light')
+    expect([...document.querySelectorAll('meta[name=theme-color]')].map((m) => m.getAttribute('content'))).toEqual(['#ffffff', '#ffffff'])
+    document.head.innerHTML = ''
+  })
+})
+
 describe('ThemeSwitch', () => {
   it('shows three options and switches the theme', async () => {
     setTheme('system')

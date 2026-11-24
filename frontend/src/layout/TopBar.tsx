@@ -5,13 +5,13 @@ import { useUiStore } from '@/features/chat/stores'
 import { cn } from '@/lib/cn'
 
 /** 48px page header. The button opens the drawer on phones and re-opens a collapsed sidebar on desktop. */
-export function TopBar({ children }: { children: ReactNode }) {
+export function TopBar({ children, plain = false }: { children: ReactNode; plain?: boolean }) {
   const t = useT()
   const setOpen = useUiStore((s) => s.setSidebarOpen)
   const collapsed = useUiStore((s) => s.collapsed)
   const setCollapsed = useUiStore((s) => s.setCollapsed)
   return (
-    <header className="flex h-12 shrink-0 items-center gap-1.5 border-b border-line px-2 sm:px-3">
+    <header className={cn('flex h-[calc(3rem+var(--safe-top))] shrink-0 items-center gap-1.5 px-2 pt-[var(--safe-top)] sm:px-3', !plain && 'border-b border-line')}>
       <button
         type="button"
         data-testid="hamburger"

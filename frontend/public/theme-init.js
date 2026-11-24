@@ -9,4 +9,6 @@
   var root = document.documentElement
   root.dataset.theme = dark ? 'dark' : 'light'
   root.classList.toggle('dark', dark)
+  var metas = document.querySelectorAll('meta[name=theme-color]')
+  for (var i = 0; i < metas.length; i++) metas[i].setAttribute('content', dark ? '#212121' : '#ffffff')
 })()

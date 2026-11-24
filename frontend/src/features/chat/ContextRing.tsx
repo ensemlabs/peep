@@ -33,40 +33,32 @@ const SEGMENTS: { key: ContextKey | 'free'; color: string }[] = [
   { key: 'free', color: 'bg-surface-2' },
 ]
 
-const TONE_TEXT: Record<RingTone, string> = { neutral: 'text-fg/70', amber: 'text-amber-500', red: 'text-red-500' }
-
-const TONE_STROKE: Record<RingTone, string> = {
-  neutral: 'stroke-fg/70',
-  amber: 'stroke-amber-500',
-  red: 'stroke-red-500',
+const TONE_FILL: Record<RingTone, string> = {
+  neutral: 'fill-fg/70',
+  amber: 'fill-amber-500',
+  red: 'fill-red-500',
 }
 
+/** Gauge: a closed thin track with a solid pie sector for the used share (from 1%). Never animated. */
 function Ring({ pct, tone, size = 20 }: { pct: number; tone: RingTone; size?: number }) {
-  const r = 8
-  const c = 2 * Math.PI * r
-  const tiny = pct > 0 && pct < 1
+  const R = 6.4 // pie radius, inside the track
+  const angle = (Math.min(pct, 99.99) / 100) * 2 * Math.PI
+  const x = 10 + R * Math.sin(angle)
+  const y = 10 - R * Math.cos(angle)
+  const full = pct >= 99.5
   return (
-    <svg width={size} height={size} viewBox="0 0 20 20" aria-hidden className="-rotate-90">
-      {/* full track so it reads as a gauge, never a spinner */}
-      <circle cx="10" cy="10" r={r} fill="none" strokeWidth="2.5" className="stroke-muted/35" />
-      {tiny ? (
-        <circle data-testid="context-ring-dot" cx={10 + r} cy="10" r="2" className={cn('fill-current', TONE_TEXT[tone])} />
-      ) : (
-        pct >= 1 && (
-          <circle
+    <svg width={size} height={size} viewBox="0 0 20 20" aria-hidden>
+      <circle cx="10" cy="10" r="8.5" fill="none" strokeWidth="1.5" className="stroke-muted/50" />
+      {pct >= 1 &&
+        (full ? (
+          <circle data-testid="context-ring-arc" cx="10" cy="10" r={R} className={TONE_FILL[tone]} />
+        ) : (
+          <path
             data-testid="context-ring-arc"
-            cx="10"
-            cy="10"
-            r={r}
-            fill="none"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeDasharray={c}
-            strokeDashoffset={c * (1 - pct / 100)}
-            className={cn('transition-[stroke-dashoffset] duration-300', TONE_STROKE[tone])}
+            d={`M10 10 L10 ${10 - R} A${R} ${R} 0 ${pct > 50 ? 1 : 0} 1 ${x.toFixed(3)} ${y.toFixed(3)} Z`}
+            className={TONE_FILL[tone]}
           />
-        )
-      )}
+        ))}
     </svg>
   )
 }

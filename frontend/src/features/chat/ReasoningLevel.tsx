@@ -23,7 +23,6 @@ export function ReasoningLevel({ model, value, onChange }: Props) {
         data-mode="single"
         className="flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[13px] text-muted tap:h-10"
       >
-        <Brain className="size-4" aria-hidden />
         {t('header.alwaysOn')}
       </span>
     )
@@ -40,8 +39,8 @@ export function ReasoningLevel({ model, value, onChange }: Props) {
         aria-label={`${t('header.thinkingLevel')}: ${current.label}`}
         className="flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[13px] text-muted hover:bg-hover hover:text-fg data-[state=open]:bg-hover tap:h-10"
       >
-        <Brain className="size-4 text-muted" aria-hidden />
-        <span className="max-w-28 truncate">{current.label}</span>
+        <Brain className="hidden size-4 max-[329px]:block" aria-hidden />
+        <span className="max-w-28 truncate max-[329px]:hidden">{current.label}</span>
         <ChevronDown className="size-3.5 text-muted" aria-hidden />
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>

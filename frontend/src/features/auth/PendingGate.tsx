@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Clock, RefreshCw } from 'lucide-react'
 import { useT } from '@/i18n'
+import { useVisualViewport } from '@/lib/useVisualViewport'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 
@@ -18,13 +19,18 @@ interface Props {
  */
 export function PendingGate({ pending, checking, onCheck, onLogout, children }: Props) {
   const t = useT()
+  useVisualViewport()
   return (
-    <div className="flex h-dvh flex-col">
+    <div
+      className="h-app flex flex-col pl-[var(--safe-left)] pr-[var(--safe-right)]"
+      // The banner sits at the very top, so the header below it must not add the top inset again.
+      style={pending ? ({ '--safe-top': '0px' } as React.CSSProperties) : undefined}
+    >
       {pending && (
         <div
           role="status"
           data-testid="pending-banner"
-          className="relative z-[60] flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-b border-line bg-amber-100 px-4 py-2 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100"
+          className="relative z-[60] flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-b border-line bg-amber-100 px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top,0px))] text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100"
         >
           <span className="flex items-center gap-2 font-medium">
             <Clock className="size-4 shrink-0" aria-hidden />

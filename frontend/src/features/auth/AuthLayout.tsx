@@ -7,7 +7,7 @@ import { useT } from '@/i18n'
 export function AuthLayout({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   const t = useT()
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center bg-surface px-4 py-10">
+    <main className="flex min-h-app flex-col items-center justify-center bg-surface px-[max(1rem,var(--safe-left))] pb-[max(2.5rem,var(--safe-bottom))] pt-[max(2.5rem,var(--safe-top))]">
       <div className="mb-4 flex w-full max-w-sm items-center justify-end gap-2">
         <ThemeSwitch />
         <LangSwitch />

@@ -3,26 +3,27 @@ import { ChevronRight } from 'lucide-react'
 import { useT } from '@/i18n'
 import { formatDuration } from '@/lib/format'
 import { cn } from '@/lib/cn'
-import { Spinner } from '@/components/ui/Spinner'
 
 interface Props {
   testId: string
-  icon: ReactNode
+  /** Optional small leading icon; most rows have none. */
+  icon?: ReactNode
   title: ReactNode
-  /** Elapsed milliseconds (live while running). Shown as a chip unless `hideDuration`. */
+  /** Elapsed milliseconds (live while running), shown muted after the title unless `hideDuration`. */
   elapsedMs?: number | null
   running?: boolean
   error?: boolean
   hideDuration?: boolean
-  /** A small spinner while running (default true). */
-  showSpinner?: boolean
   /** Default open state; user toggling overrides it for good. */
   defaultOpen?: boolean
   children: ReactNode
 }
 
-/** Header (icon, title, timer, spinner, chevron) + animated, lazily-rendered body. */
-export function CollapsibleStep({ testId, icon, title, elapsedMs, running, error, hideDuration, showSpinner = true, defaultOpen = false, children }: Props) {
+/**
+ * A step is one muted inline row (no box): label, optional duration, a chevron that rotates when open.
+ * The body is indented under a left rule and rendered lazily; it animates open and closed.
+ */
+export function CollapsibleStep({ testId, icon, title, elapsedMs, running, error, hideDuration, defaultOpen = false, children }: Props) {
   const t = useT()
   const [userOpen, setUserOpen] = useState<boolean | null>(null)
   const [everOpen, setEverOpen] = useState(false)
@@ -36,7 +37,7 @@ export function CollapsibleStep({ testId, icon, title, elapsedMs, running, error
       data-testid={testId}
       data-state={open ? 'open' : 'closed'}
       data-status={running ? 'running' : error ? 'error' : 'done'}
-      className={cn('my-1.5 rounded-xl border bg-bg', error ? 'border-danger/50' : 'border-line')}
+      className="my-1"
     >
       <button
         type="button"
@@ -44,21 +45,23 @@ export function CollapsibleStep({ testId, icon, title, elapsedMs, running, error
         aria-expanded={open}
         aria-controls={bodyId}
         onClick={() => setUserOpen(!open)}
-        className="flex w-full min-w-0 items-center gap-2 rounded-xl px-3 py-1.5 text-left text-[13px] hover:bg-hover"
+        className={cn(
+          'group inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-md py-1 text-left text-[14px] transition-colors',
+          error ? 'text-danger' : 'text-muted hover:text-fg',
+        )}
       >
-        {icon && <span className={cn('shrink-0', error ? 'text-danger' : 'text-muted')}>{icon}</span>}
-        <span className="flex min-w-0 flex-1 items-center gap-2 truncate">{title}</span>
+        {icon && <span className="shrink-0">{icon}</span>}
+        <span className="flex min-w-0 items-center gap-1.5 truncate">{title}</span>
         {showDuration && (
-          <span data-testid="step-duration" className="shrink-0 text-xs tabular-nums text-muted">
+          <span data-testid="step-duration" className="shrink-0 text-[13px] tabular-nums opacity-70">
             {formatDuration(elapsedMs!, t)}
           </span>
         )}
-        {running && showSpinner && <Spinner className="shrink-0 text-muted" />}
-        <ChevronRight className={cn('size-4 shrink-0 text-muted transition-transform duration-200', open && 'rotate-90')} aria-hidden />
+        <ChevronRight className={cn('size-3.5 shrink-0 transition-transform duration-200', open && 'rotate-90')} aria-hidden />
       </button>
       <div id={bodyId} className="collapse-grid" data-open={open} aria-hidden={!open}>
         <div className="collapse-inner" inert={!open}>
-          {everOpen && <div className="border-t border-line px-3 py-2.5 text-[13px]">{children}</div>}
+          {everOpen && <div className="ml-1 border-l-2 border-line py-1 pl-3 text-[14px]">{children}</div>}
         </div>
       </div>
     </div>

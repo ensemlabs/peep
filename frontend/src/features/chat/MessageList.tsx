@@ -24,12 +24,11 @@ interface Props {
   onExample: (text: string) => void
   userName?: string
   loading?: boolean
-  onStop?: () => void
 }
 
 const THRESHOLD = 80
 
-export function MessageList({ messages, conversationKey, onExample, userName, loading, onStop }: Props) {
+export function MessageList({ messages, conversationKey, onExample, userName, loading }: Props) {
   const t = useT()
   const scroller = useRef<HTMLDivElement>(null)
   const content = useRef<HTMLDivElement>(null)
@@ -70,19 +69,21 @@ export function MessageList({ messages, conversationKey, onExample, userName, lo
       if (atBottom.current && messagesLen.current > 0) scrollToBottom()
     })
     ro.observe(el)
+    // The scroller itself shrinks when the on-screen keyboard opens: stay on the latest message.
+    if (scroller.current) ro.observe(scroller.current)
     return () => ro.disconnect()
   }, [scrollToBottom])
 
   return (
     <div className="relative min-h-0 flex-1">
-      <div ref={scroller} onScroll={onScroll} className="h-full overflow-y-auto overflow-x-hidden" data-testid="message-scroller">
-        <div ref={content} role="log" aria-label={t('chat.messageList')} className="mx-auto flex w-full max-w-[760px] flex-col gap-5 px-3 py-5 sm:px-4">
+      <div ref={scroller} onScroll={onScroll} className="h-full overflow-y-auto overflow-x-hidden overscroll-contain" data-testid="message-scroller">
+        <div ref={content} role="log" aria-label={t('chat.messageList')} className="mx-auto flex w-full max-w-[768px] flex-col gap-6 px-4 py-6">
           {messages.length === 0 && loading ? (
             <MessageSkeleton />
           ) : messages.length === 0 ? (
             <EmptyState onExample={onExample} name={userName} />
           ) : (
-            messages.map((m) => <MessageView key={m.id} message={m} onStop={onStop} />)
+            messages.map((m) => <MessageView key={m.id} message={m} />)
           )}
         </div>
       </div>

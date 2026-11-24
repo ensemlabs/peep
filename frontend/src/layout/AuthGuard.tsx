@@ -18,7 +18,7 @@ export function AuthGuard() {
 
   if (me.isPending) {
     return (
-      <div className="flex h-dvh items-center justify-center text-muted">
+      <div className="flex h-app items-center justify-center text-muted">
         <Spinner className="size-6" label={t('common.loading')} />
       </div>
     )
@@ -30,7 +30,7 @@ export function AuthGuard() {
       return <Navigate to="/login" replace state={e.code === 'account_disabled' ? { notice: 'account_disabled' } : undefined} />
     }
     return (
-      <div className="flex h-dvh flex-col items-center justify-center gap-3 p-6 text-center">
+      <div className="flex h-app flex-col items-center justify-center gap-3 p-6 text-center">
         <p className="text-sm text-danger">{err(e)}</p>
         <Button onClick={() => qc.invalidateQueries({ queryKey: ME_KEY })}>{t('pending.check')}</Button>
       </div>

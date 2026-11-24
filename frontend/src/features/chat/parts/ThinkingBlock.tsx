@@ -1,32 +1,22 @@
-import { useLayoutEffect, useRef } from 'react'
 import { useT } from '@/i18n'
 import { formatDuration } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import type { ThinkingPart } from '@/api/types'
-import { Lightbulb } from 'lucide-react'
 import { Markdown } from './Markdown'
 import { CollapsibleStep } from './CollapsibleStep'
 import { useElapsed } from './useElapsed'
 
-/** Muted thinking text; while running it follows the stream unless the user scrolled up. */
+/**
+ * Plain muted thinking text. While running only the last few lines show, bottom-aligned with a fade
+ * at the top (ChatGPT style, no scroller); once done and opened it shows in full.
+ */
 function ThinkingText({ text, running }: { text: string; running: boolean }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const stick = useRef(true)
-  useLayoutEffect(() => {
-    const el = ref.current
-    if (el && stick.current) el.scrollTop = el.scrollHeight
-  }, [text])
   return (
     <div
-      ref={ref}
       data-testid="thinking-panel"
-      onScroll={(e) => {
-        const el = e.currentTarget
-        stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24
-      }}
+      data-clamped={running}
       className={cn(
-        'overflow-y-auto',
-        running ? 'max-h-48 [mask-image:linear-gradient(to_bottom,transparent,black_1.75rem)]' : 'max-h-[28rem]',
+        running && 'flex max-h-[9.6em] flex-col justify-end overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_2rem)]',
       )}
     >
       <div data-testid="thinking-text">
@@ -48,8 +38,11 @@ export function ThinkingBlock({ part, live }: { part: ThinkingPart; live: boolea
   return (
     <CollapsibleStep
       testId="step-thinking"
-      icon={running ? null : <Lightbulb className="size-4" />}
-      title={<span data-testid="thinking-label" data-shimmer={running} className={running ? 'shimmer-text' : undefined}>{title}</span>}
+      title={
+        <span data-testid="thinking-label" data-shimmer={running} className={running ? 'shimmer-text' : undefined}>
+          {title}
+        </span>
+      }
       running={running}
       elapsedMs={elapsed}
       hideDuration={!running}

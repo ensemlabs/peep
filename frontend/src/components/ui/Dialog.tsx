@@ -26,7 +26,7 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
           className={cn(
             'fixed z-50 flex flex-col border border-line bg-bg shadow-xl',
             sheet
-              ? 'inset-x-0 bottom-0 max-h-[85dvh] rounded-t-2xl p-4 pb-[max(1rem,env(safe-area-inset-bottom))]'
+              ? 'inset-x-0 bottom-0 max-h-[85dvh] rounded-t-2xl p-4 pb-[max(1rem,var(--safe-bottom))] pl-[max(1rem,var(--safe-left))] pr-[max(1rem,var(--safe-right))]'
               : 'left-1/2 top-1/2 max-h-[90dvh] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl p-5',
             className,
           )}

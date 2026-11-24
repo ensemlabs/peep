@@ -24,6 +24,8 @@ export function applyTheme(pref: ThemePref): void {
   const root = document.documentElement
   root.dataset.theme = dark ? 'dark' : 'light'
   root.classList.toggle('dark', dark)
+  // Browser chrome colour follows the explicit choice, not just the OS scheme.
+  document.querySelectorAll('meta[name=theme-color]').forEach((m) => m.setAttribute('content', dark ? '#212121' : '#ffffff'))
 }
 
 let current: ThemePref = getStoredTheme()

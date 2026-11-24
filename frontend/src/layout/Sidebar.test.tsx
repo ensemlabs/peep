@@ -14,7 +14,7 @@ const conv = (id: string, over: Partial<Conversation> = {}): Conversation => ({
 const list = vi.fn()
 vi.mock('@/api/client', async (orig) => ({
   ...(await orig<typeof import('@/api/client')>()),
-  api: { conversations: (q?: string, before?: string | null) => list(q, before), patchConversation: vi.fn(), deleteConversation: vi.fn(), markRead: vi.fn(), logout: vi.fn() },
+  api: { conversations: (q?: string, before?: string | null) => list(q, before), patchConversation: vi.fn(), deleteConversation: vi.fn(), markRead: vi.fn(), logout: vi.fn(), models: vi.fn(async () => ({ switchable: false, active: {}, items: [] })) },
 }))
 import { Sidebar } from './Sidebar'
 

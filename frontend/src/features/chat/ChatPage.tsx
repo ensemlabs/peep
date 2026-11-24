@@ -6,6 +6,9 @@ import type { FileMeta, Message, User } from '@/api/types'
 import { useI18n } from '@/i18n'
 import { Composer } from './Composer'
 import { ReasoningLevel } from './ReasoningLevel'
+import { ModelPicker } from './ModelPicker'
+import { useEscapeToStop } from './escape'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 import { ContextRing } from './ContextRing'
 import { ChatHeader } from './ChatHeader'
 import { MessageList } from './MessageList'
@@ -59,6 +62,15 @@ function ChatPage({ id }: { id?: string }) {
   const wanted = picked ?? convModel ?? (id ? null : savedModel)
   const current = (switchable ? items.find((m) => m.id === wanted) : undefined) ?? models.data?.active
   const level = resolveLevel(current, current ? levels[current.id] : undefined)
+  // A pick made elsewhere (the drawer picker on phones) updates the remembered model: apply it here too.
+  const firstModel = useRef(true)
+  useEffect(() => {
+    if (firstModel.current) {
+      firstModel.current = false
+      return
+    }
+    if (savedModel) setPicked(savedModel)
+  }, [savedModel])
   const onModel = useCallback((mid: string) => {
     setPicked(mid)
     setModel(mid) // remembered for new chats
@@ -105,7 +117,9 @@ function ChatPage({ id }: { id?: string }) {
     attachTimer.current = setTimeout(() => qc.invalidateQueries({ queryKey: CONTEXT_KEY }), 300)
   }, [qc])
 
+  const desktop = useMediaQuery('(min-width: 768px)')
   const streaming = !!run || messages.some((m) => m.role === 'assistant' && m.status === 'streaming')
+  useEscapeToStop(streaming, onStop)
 
   async function onSend(text: string, attachments: FileMeta[]) {
     if (!current) return
@@ -138,13 +152,7 @@ function ChatPage({ id }: { id?: string }) {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <ChatHeader
-        switchable={switchable}
-        models={items}
-        model={current}
-        onModel={onModel}
-        conversation={id && conv.data ? conv.data.conversation : undefined}
-      />
+      <ChatHeader conversation={id && conv.data ? conv.data.conversation : undefined} />
       {loadFailed ? (
         <p role="alert" className="m-6 text-sm text-danger">{t('chat.loadFailed')}</p>
       ) : (
@@ -152,7 +160,6 @@ function ChatPage({ id }: { id?: string }) {
           messages={messages}
           conversationKey={id ?? 'new'}
           userName={user.display_name}
-          onStop={id ? onStop : undefined}
           loading={!!id && conv.isLoading && !run}
           onExample={(text) => {
             setSeed(text)
@@ -171,7 +178,12 @@ function ChatPage({ id }: { id?: string }) {
         conversationId={id}
         streaming={streaming}
         disabled={!current}
-        toolbar={<ReasoningLevel model={current} value={level} onChange={(l) => current && setLevel(current.id, l)} />}
+        toolbar={
+          <>
+            {switchable && desktop && <ModelPicker models={items} value={current} onChange={onModel} />}
+            <ReasoningLevel model={current} value={level} onChange={(l) => current && setLevel(current.id, l)} />
+          </>
+        }
         renderRing={({ text }) => <ContextRing data={context.data} model={current} draftText={text} />}
         onAttachmentsChange={onAttachmentsChange}
         autoFocus

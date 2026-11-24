@@ -19,13 +19,21 @@ describe('CollapsibleStep', () => {
     await userEvent.click(btn)
     expect(btn).toHaveAttribute('aria-expanded', 'false')
   })
-  it('shows a spinner and live duration while running, none when done', () => {
-    const { rerender } = renderWithI18n(<CollapsibleStep testId="s" icon={null} title="T" running elapsedMs={3000}>x</CollapsibleStep>)
-    expect(screen.getByTestId('spinner')).toBeInTheDocument()
-    expect(screen.getByTestId('step-duration')).toHaveTextContent('3s')
-    rerender(<CollapsibleStep testId="s" icon={null} title="T" running={false} elapsedMs={12000}>x</CollapsibleStep>)
+  it('shows a live duration while running and no spinner or icon clutter', () => {
+    const { rerender } = renderWithI18n(<CollapsibleStep testId="s" title="T" running elapsedMs={3000}>x</CollapsibleStep>)
     expect(screen.queryByTestId('spinner')).toBeNull()
+    expect(screen.getByTestId('step-duration')).toHaveTextContent('3s')
+    rerender(<CollapsibleStep testId="s" title="T" running={false} elapsedMs={12000}>x</CollapsibleStep>)
     expect(screen.getByTestId('step-duration')).toHaveTextContent('12s')
+  })
+  it('is a plain row without a box: no border or background on the root', () => {
+    renderWithI18n(<CollapsibleStep testId="s" title="T">x</CollapsibleStep>)
+    const cls = screen.getByTestId('s').className
+    expect(cls).not.toMatch(/border|bg-|rounded/)
+  })
+  it('indents the opened body under a left rule', async () => {
+    renderWithI18n(<CollapsibleStep testId="s" title="T" defaultOpen><p>BODY</p></CollapsibleStep>)
+    expect(screen.getByText('BODY').parentElement?.className).toContain('border-l-2')
   })
   it('respects defaultOpen until the user toggles', async () => {
     renderWithI18n(<CollapsibleStep testId="s" icon={null} title="T" defaultOpen>BODY</CollapsibleStep>)
@@ -48,22 +56,24 @@ describe('ThinkingBlock', () => {
     await userEvent.click(screen.getByTestId('step-toggle'))
     expect(screen.getByText('secret thoughts')).toBeInTheDocument()
   })
-  it('is expanded while streaming, showing live text, a spinner (no mascot) and "Thinking…"', () => {
+  it('is expanded while streaming, showing live text under a left rule, the shimmer label and no icon or spinner', () => {
     renderWithI18n(<ThinkingBlock part={thinking({ status: 'running', ended_at: null })} live />)
     expect(screen.getByTestId('step-toggle')).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByTestId('step-thinking')).toHaveAttribute('data-state', 'open')
     expect(screen.getByText('Thinking…')).toBeInTheDocument()
     expect(screen.getByText('secret thoughts')).toBeInTheDocument()
     expect(screen.queryByTestId('mascot')).toBeNull()
-    expect(screen.getByTestId('spinner')).toBeInTheDocument()
+    expect(screen.queryByTestId('spinner')).toBeNull()
+    expect(screen.getByTestId('thinking-panel')).toHaveAttribute('data-clamped', 'true')
     expect(screen.getByTestId('thinking-label')).toHaveAttribute('data-shimmer', 'true')
     expect(screen.getByTestId('thinking-label')).toHaveClass('shimmer-text')
     expect(document.querySelector('.lucide-lightbulb')).toBeNull() // no icon while running
     expect(screen.getByTestId('step-duration')).toBeInTheDocument()
   })
-  it('shows a lightbulb and no shimmer once done', () => {
+  it('shows no icon and no shimmer once done, only the duration label with a chevron', () => {
     renderWithI18n(<ThinkingBlock part={thinking()} live={false} />)
-    expect(document.querySelector('.lucide-lightbulb')).not.toBeNull()
+    expect(document.querySelector('.lucide-lightbulb')).toBeNull()
+    expect(document.querySelector('.lucide-chevron-right')).not.toBeNull()
     expect(screen.getByTestId('thinking-label')).toHaveAttribute('data-shimmer', 'false')
     expect(screen.getByTestId('thinking-label')).not.toHaveClass('shimmer-text')
   })
@@ -115,6 +125,23 @@ describe('ToolCard', () => {
     unmount()
     renderWithI18n(<ToolCard part={tool({ status: 'done', output: '{"a":1}' })} live={false} />)
     expect(screen.getByTestId('step-toggle')).toHaveAttribute('aria-expanded', 'false')
+  })
+  it('reads "Running name…" with a shimmer, then "Ran name · summary", red text on error', () => {
+    const { rerender } = renderWithI18n(<ToolCard part={tool()} live />)
+    expect(screen.getByTestId('tool-label')).toHaveTextContent('Running web_search · cats…')
+    expect(screen.getByTestId('tool-label')).toHaveAttribute('data-shimmer', 'true')
+    rerender(<ToolCard part={tool({ status: 'done', output: 'x' })} live={false} />)
+    expect(screen.getByTestId('tool-label')).toHaveTextContent('Ran web_search')
+    expect(screen.getByTestId('tool-label')).toHaveAttribute('data-shimmer', 'false')
+    rerender(<ToolCard part={tool({ status: 'error' })} live={false} />)
+    expect(screen.getByTestId('tool-label')).toHaveTextContent('Failed web_search')
+    expect(screen.getByTestId('step-toggle').className).toContain('text-danger')
+  })
+  it('renders produced media directly under the row, without expanding', () => {
+    const file = { id: 'f1', kind: 'image' as const, mime: 'image/png', filename: 'a.png', size: 1, width: 10, height: 10, url: '/u', thumb_url: '/t', download_url: '/d' }
+    renderWithI18n(<ToolCard part={tool({ status: 'done', files: [file], output: 'x' })} live={false} />)
+    expect(screen.getByTestId('step-toggle')).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByTestId('gallery')).toBeInTheDocument()
   })
 })
 

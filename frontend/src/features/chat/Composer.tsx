@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode } from 'react'
-import { ArrowUp, FileText, Film, Music, Paperclip, Square, X, AlertCircle } from 'lucide-react'
+import { ArrowUp, FileText, Film, Music, Plus, Square, X, AlertCircle } from 'lucide-react'
 import { api, uploadFile as defaultUpload } from '@/api/client'
 import type { FileMeta } from '@/api/types'
 import { useI18n } from '@/i18n'
@@ -186,7 +186,7 @@ export function Composer({ streaming, disabled, onSend, onStop, upload = default
   }
 
   return (
-    <div className="mx-auto w-full max-w-[760px] bg-gradient-to-t from-bg from-70% to-transparent px-3 pb-3 pt-4 sm:px-4 sm:pb-4">
+    <div className="mx-auto w-full max-w-[768px] bg-gradient-to-t from-bg from-70% to-transparent px-3 pb-[max(12px,var(--safe-bottom))] pt-3 sm:px-4 sm:pb-[max(16px,var(--safe-bottom))]">
       {dragging && (
         <div
           data-testid="drop-overlay"
@@ -195,7 +195,7 @@ export function Composer({ streaming, disabled, onSend, onStop, upload = default
           <div className="rounded-2xl border-2 border-dashed border-fg/40 px-8 py-6 text-lg font-medium">{t('chat.dropHere')}</div>
         </div>
       )}
-      <div className="rounded-2xl border border-line bg-bg shadow-[0_4px_24px_-8px_rgb(0_0_0/0.18)] transition-shadow focus-within:border-fg/30 focus-within:shadow-[0_6px_28px_-8px_rgb(0_0_0/0.25)]">
+      <div className="rounded-[28px] border border-line/70 bg-surface-2 shadow-[0_2px_16px_-6px_rgb(0_0_0/0.16)] transition-shadow focus-within:shadow-[0_4px_22px_-6px_rgb(0_0_0/0.22)]">
         {items.length > 0 && (
           <ul className="flex flex-wrap gap-2 px-3 pt-3" aria-label={t('chat.attach')}>
             {items.map((a) => (
@@ -254,9 +254,9 @@ export function Composer({ streaming, disabled, onSend, onStop, upload = default
           disabled={disabled}
           placeholder={t('chat.placeholder')}
           aria-label={t('chat.placeholder')}
-          className="block max-h-[40dvh] min-h-[44px] w-full resize-none bg-transparent px-4 pb-1 pt-3 text-[15px] leading-6 placeholder:text-muted focus:outline-none focus-visible:outline-none"
+          className="block max-h-[40dvh] min-h-[52px] w-full resize-none bg-transparent px-5 pb-1 pt-3.5 text-[15px] leading-6 placeholder:text-muted focus:outline-none focus-visible:outline-none"
         />
-        <div className="flex items-center justify-between gap-1 px-2 pb-2">
+        <div className="flex items-center justify-between gap-1 px-2.5 pb-2.5">
           <div className="flex min-w-0 items-center gap-0.5">
           <input
             ref={fileRef}
@@ -278,7 +278,7 @@ export function Composer({ streaming, disabled, onSend, onStop, upload = default
             data-testid="attach-button"
             className="flex items-center justify-center rounded-full p-2 text-muted hover:bg-hover hover:text-fg disabled:opacity-50 tap:size-10 tap:p-0"
           >
-            <Paperclip className="size-5" />
+            <Plus className="size-5" />
           </button>
             {toolbar}
           </div>

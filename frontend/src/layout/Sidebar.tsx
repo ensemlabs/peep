@@ -13,6 +13,8 @@ import { useLogout } from '@/features/auth/useMe'
 import { ConversationMenuItems, DeleteConversationDialog, useConversationActions } from '@/features/chat/conversationActions'
 import { CONVERSATIONS_KEY } from '@/features/chat/runner'
 import { useRunStore, useUiStore } from '@/features/chat/stores'
+import { ModelPicker } from '@/features/chat/ModelPicker'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 import { effectiveStatus, groupConversations, indicatorFor, unreadCount, type Indicator } from './conversationStatus'
 
 export { groupConversations } from './conversationStatus'
@@ -149,7 +151,8 @@ export function Sidebar({ user }: { user: User }) {
         data-collapsed={collapsed}
         aria-label={t('app.name')}
         className={cn(
-          'z-40 flex w-[272px] shrink-0 flex-col border-r border-line bg-surface',
+          'z-40 flex shrink-0 flex-col border-r border-line bg-surface md:w-[272px]',
+          'max-md:w-[min(85vw,300px)] max-md:pb-[var(--safe-bottom)] max-md:pl-[var(--safe-left)] max-md:pt-[var(--safe-top)]',
           'max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:transition-[transform,visibility] max-md:duration-200',
           open ? 'max-md:translate-x-0' : 'max-md:invisible max-md:-translate-x-full',
           collapsed && 'md:hidden',
@@ -201,7 +204,8 @@ export function Sidebar({ user }: { user: User }) {
           </div>
         </div>
 
-        <nav onScroll={onScroll} data-testid="sidebar-list" className="min-h-0 flex-1 overflow-y-auto px-2 pb-2" aria-label={t('chat.messageList')}>
+        <DrawerModelPicker enabled={active} />
+        <nav onScroll={onScroll} data-testid="sidebar-list" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-2" aria-label={t('chat.messageList')}>
           {loading && items.length === 0 && (
             <div className="space-y-1.5 px-2 pt-2" aria-hidden data-testid="sidebar-skeleton">
               {[70, 55, 80, 60, 45].map((w, i) => (
@@ -235,6 +239,22 @@ export function Sidebar({ user }: { user: User }) {
 }
 
 /** The single 16px status slot on the right of a row. */
+/** Dev model switcher inside the drawer on phones (on desktop it lives in the composer toolbar). */
+function DrawerModelPicker({ enabled }: { enabled: boolean }) {
+  const { lang } = useI18n()
+  const desktop = useMediaQuery('(min-width: 768px)')
+  const models = useQuery({ queryKey: ['models', lang], queryFn: api.models, staleTime: 5 * 60_000, enabled })
+  const savedModel = useUiStore((s) => s.model)
+  const setModel = useUiStore((s) => s.setModel)
+  if (!models.data?.switchable || desktop) return null
+  const value = models.data.items.find((m) => m.id === savedModel) ?? models.data.active
+  return (
+    <div className="px-3 pb-2">
+      <ModelPicker models={models.data.items} value={value} onChange={setModel} side="bottom" className="w-full justify-between border border-line" />
+    </div>
+  )
+}
+
 function StatusIcon({ kind }: { kind: Indicator }) {
   const { t } = useI18n()
   if (!kind) return <span className="size-4" aria-hidden />

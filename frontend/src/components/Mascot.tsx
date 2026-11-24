@@ -1,33 +1,33 @@
 import { useId } from 'react'
-import type { Message, Part } from '@/api/types'
 import { cn } from '@/lib/cn'
 
-export type MascotState = 'idle' | 'thinking' | 'working' | 'error'
+/** greet: waves once (~2 s) then falls into the idle loop by itself; pending: thought dots; error: X eyes. */
+export type MascotState = 'greet' | 'idle' | 'pending' | 'error'
 
 interface Props {
   state?: MascotState
   size?: number
-  /** When false the pose is static (animations are also off under prefers-reduced-motion). */
+  /** When false the pose is static. (Reduced motion also makes it static, in CSS.) */
   animated?: boolean
-  /** Walking gait (feet/arms swing, body bobs); the parent moves it. */
-  walking?: boolean
   className?: string
 }
 
-export function mascotClass(state: MascotState, animated: boolean, walking = false): string {
-  return cn('mascot', 'mascot-pip', `mascot--${state}`, !animated && 'mascot--still', walking && animated && 'mascot--walk')
+export function mascotClass(state: MascotState, animated: boolean): string {
+  return cn('mascot', 'mascot-peep', `mascot--${state}`, !animated && 'mascot--still')
 }
 
-/** "Pip": an original little robot. Pure SVG + CSS keyframes (index.css, scoped under .mascot-pip). */
-export function Mascot({ state = 'idle', size = 28, animated = true, walking = false, className }: Props) {
-  const gid = `pip-${useId().replace(/:/g, '')}`
+/**
+ * "Peep": an original round chick. Pure SVG + CSS keyframes (index.css, scoped under .mascot-peep).
+ * Animated parts: `.peep-float` (whole body), `.peep-body`, `.peep-eyes`, `.peep-limbL/R`, `.peep-extra`.
+ */
+export function Mascot({ state = 'idle', size = 28, animated = true, className }: Props) {
+  const gid = `peep-${useId().replace(/:/g, '')}`
   return (
     <svg
       data-testid="mascot"
       data-state={state}
       data-animated={animated}
-      data-walking={walking && animated}
-      className={cn(mascotClass(state, animated, walking), className)}
+      className={cn(mascotClass(state, animated), className)}
       width={size}
       height={size}
       viewBox="0 0 64 64"
@@ -35,43 +35,23 @@ export function Mascot({ state = 'idle', size = 28, animated = true, walking = f
       aria-hidden="true"
       focusable="false"
     >
-      <defs><linearGradient id={gid} x1=".15" y1="0" x2=".85" y2="1"><stop offset="0" stopColor="#78f3df"/><stop offset="1" stopColor="#119f98"/></linearGradient></defs>
-      <g transform="translate(32 34) scale(.92) translate(-32 -34)"><ellipse className="pip-shadow" cx="32" cy="61" rx="15" ry="2.2" fill="#000" opacity=".2"/>
-      <g className="pip-float"><g className="pip-body">
-      <g className="pip-antenna"><rect x="30.5" y="12" width="3" height="9" rx="1.5" fill="#0c8780"/>
-      <g className="pip-bulb"><circle className="pip-glow" cx="32" cy="9" r="7" fill="#ffd166" opacity=".35"/><circle cx="32" cy="9" r="4.3" fill="#ffd166"/><circle cx="30.7" cy="7.7" r="1.3" fill="#fff" opacity=".85"/></g></g>
-      <ellipse className="pip-footL" cx="23" cy="56.5" rx="6" ry="3" fill="#0c8780"/><ellipse className="pip-footR" cx="41" cy="56.5" rx="6" ry="3" fill="#0c8780"/>
-      <ellipse className="pip-armL" cx="8.5" cy="42" rx="4.2" ry="6" fill="#0e948d"/><ellipse className="pip-armR" cx="55.5" cy="42" rx="4.2" ry="6" fill="#0e948d"/>
-      <path d="M32 17C46 17 54 30 54 41C54 51 45 57 32 57C19 57 10 51 10 41C10 30 18 17 32 17Z" fill={`url(#${gid})`}/>
-      <ellipse cx="21.5" cy="26" rx="5" ry="2.8" fill="#fff" opacity=".4" transform="rotate(-35 21.5 26)"/>
-      <rect x="16" y="29" width="32" height="21" rx="10" fill="#0f2f3a"/>
-      <g className="pip-face-ok"><g className="pip-gaze"><g className="pip-eyes" fill="#7ff5e0"><rect x="21.5" y="33.5" width="7" height="9" rx="3.5"/><rect x="35.5" y="33.5" width="7" height="9" rx="3.5"/></g></g>
-      <path d="M29 45.5q3 2.6 6 0" fill="none" stroke="#7ff5e0" strokeWidth="1.8" strokeLinecap="round"/>
-      <circle cx="19.5" cy="45" r="2" fill="#ff8fab" opacity=".75"/><circle cx="44.5" cy="45" r="2" fill="#ff8fab" opacity=".75"/></g>
-      <g className="pip-face-err"><g fill="none" stroke="#ff8a80" strokeWidth="2.6" strokeLinecap="round"><path d="M22.5 35l6 6M28.5 35l-6 6M35.5 35l6 6M41.5 35l-6 6"/><path d="M27.5 46.5q1.6-2.2 3.2 0t3.2 0 3.2 0" strokeWidth="2"/></g></g></g>
-      </g></g>
-      <g className="pip-dots" fill="#19b8a8"><circle className="d1" cx="46" cy="13" r="1.6"/><circle className="d2" cx="52" cy="8.5" r="2.1"/><circle className="d3" cx="58.5" cy="4.5" r="2.7"/></g>
+      <defs><linearGradient id={gid} x1=".2" y1="0" x2=".8" y2="1"><stop offset="0" stopColor="#ffec80"/><stop offset="1" stopColor="#ffb41c"/></linearGradient></defs>
+      <g transform="translate(32 34) scale(.86) translate(-32 -34)"><ellipse className="peep-shadow" cx="32" cy="61.5" rx="14" ry="2.1" fill="#000" opacity=".2"/>
+      <g className="peep-float"><g className="peep-body">
+      <ellipse cx="25" cy="57" rx="4.4" ry="2.3" fill="#ff8a2a"/><ellipse cx="39" cy="57" rx="4.4" ry="2.3" fill="#ff8a2a"/>
+      <path d="M32 14C46 14 55 25 55 37C55 49 46 57 32 57C18 57 9 49 9 37C9 25 18 14 32 14Z" fill={`url(#${gid})`}/>
+      <g className="peep-extra" fill="none" stroke="#f59e0b" strokeWidth="3" strokeLinecap="round"><path d="M28 15Q26 8 21 8.5"/><path d="M32 14.5Q32 6 35.5 5"/><path d="M36.5 15Q39.5 9 44 10"/></g>
+      <ellipse cx="32" cy="47" rx="14" ry="9" fill="#fff3b8" opacity=".85"/>
+      <ellipse cx="21.5" cy="22" rx="5.5" ry="2.6" fill="#fff" opacity=".5" transform="rotate(-30 21.5 22)"/>
+      <ellipse cx="15.5" cy="40" rx="3.5" ry="2.4" fill="#ffa24a" opacity=".55"/><ellipse cx="48.5" cy="40" rx="3.5" ry="2.4" fill="#ffa24a" opacity=".55"/>
+      <g className="peep-face-ok"><g className="peep-gaze"><g className="peep-eyes"><g fill="#3a2410"><ellipse cx="22.5" cy="31" rx="3.4" ry="4.6"/><ellipse cx="41.5" cy="31" rx="3.4" ry="4.6"/></g><circle cx="23.8" cy="29.2" r="1.6" fill="#fff"/><circle cx="42.8" cy="29.2" r="1.6" fill="#fff"/></g></g></g>
+      <path d="M27.5 35.5Q32 32.2 36.5 35.5Q35.5 40.2 32 41Q28.5 40.2 27.5 35.5Z" fill="#ff8a2a"/>
+      <g className="peep-face-ok"><ellipse className="peep-smile" cx="32" cy="40.6" rx="2.9" ry="1.3" fill="#f06a1a"/></g>
+      <path className="peep-happy" d="M18.8 32.5Q22.5 26  26.2 32.5M37.8 32.5Q41.5 26  45.2 32.5" fill="none" stroke="#3a2410" strokeWidth="2.4" strokeLinecap="round"/><ellipse className="peep-open" cx="32" cy="41.6" rx="3.3" ry="3" fill="#9c2f18"/><g className="peep-face-err"><path d="M19.5 27.5l6 6M25.5 27.5l-6 6M38.5 27.5l6 6M44.5 27.5l-6 6M28.5 44q1.6-2.2 3.2 0t3.2 0" fill="none" stroke="#3a2410" strokeWidth="2.4" strokeLinecap="round"/></g>
+      <g className="peep-limbL"><ellipse cx="9" cy="41" rx="4.8" ry="7.5" transform="rotate(16 9 41)" fill="#ffae14"/></g>
+      <g className="peep-limbR"><ellipse cx="55" cy="41" rx="4.8" ry="7.5" transform="rotate(-16 55 41)" fill="#ffae14"/></g>
+      </g></g></g>
+      <g className="peep-dots" fill="#f5a30c"><circle className="d1" cx="48" cy="12" r="2.1"/><circle className="d2" cx="53" cy="8.5" r="2.7"/><circle className="d3" cx="57.5" cy="5.5" r="3.3"/></g>
     </svg>
   )
-}
-
-function deepestRunning(parts: Part[]): Part | null {
-  for (let i = parts.length - 1; i >= 0; i--) {
-    const p = parts[i]
-    if (p.type === 'subagent' && p.status === 'running') {
-      return deepestRunning(p.parts) ?? p
-    }
-    if ((p.type === 'tool' || p.type === 'thinking') && p.status === 'running') return p
-  }
-  return null
-}
-
-/** Mascot pose for an assistant message: follows the part that is currently running. */
-export function mascotStateFor(message: Message): MascotState {
-  if (message.status === 'error') return 'error'
-  if (message.status !== 'streaming') return 'idle'
-  const running = deepestRunning(message.parts)
-  if (running?.type === 'thinking') return 'thinking'
-  if (running) return 'working'
-  return message.parts.length === 0 ? 'thinking' : 'idle'
 }
