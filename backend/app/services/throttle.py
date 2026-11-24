@@ -59,6 +59,23 @@ async def hit_counter(db: AsyncSession, key: str, limit: int, window_s: int) -> 
         raise too_many((row.window_start + timedelta(seconds=window_s) - now).total_seconds())
 
 
+async def check_budget(db: AsyncSession, key: str, limit: int, window_s: int) -> None:
+    """Raise 429 once `limit` events were already counted for `key` in the window (does not count anything)."""
+    now = _now()
+    row = (await db.execute(text("SELECT fail_count, window_start FROM auth_throttle WHERE key = :key"), {"key": key})).first()
+    await db.commit()
+    if row and row.window_start > now - timedelta(seconds=window_s) and row.fail_count >= limit:
+        raise too_many((row.window_start + timedelta(seconds=window_s) - now).total_seconds())
+
+
+async def count_failure(db: AsyncSession, key: str) -> None:
+    """Count one failed attempt for `key` (no lock); enforced by check_budget."""
+    now = _now()
+    cutoff = now - timedelta(seconds=get_settings().throttle_window_seconds)
+    await db.execute(_HIT, {"key": key, "now": now, "cutoff": cutoff})
+    await db.commit()
+
+
 async def check_not_locked(db: AsyncSession, key: str) -> None:
     now = _now()
     locked_until = (

@@ -80,7 +80,9 @@ async def login(body: LoginBody, request: Request, response: Response, db: Async
     email = normalize_email(body.email)
     acct_key = f"acct:{email}|{ip}"
 
-    await throttle.hit_counter(db, f"ip:{ip}", s.ip_login_max, s.throttle_window_seconds)
+    # Only failed logins consume the per-IP budget; successful ones do not.
+    ip_key = f"ip:{ip}"
+    await throttle.check_budget(db, ip_key, s.ip_login_max, s.throttle_window_seconds)
     await throttle.check_not_locked(db, acct_key)
 
     user = (await db.execute(select(User).where(func.lower(User.email) == email))).scalar_one_or_none()
@@ -93,6 +95,7 @@ async def login(body: LoginBody, request: Request, response: Response, db: Async
         ok = await verify_password(user.password_hash, body.password)
     if not ok or user is None:
         await throttle.record_failure(db, acct_key)
+        await throttle.count_failure(db, ip_key)
         raise ApiError(401, "invalid_credentials", "Invalid email or password")
 
     await throttle.reset(db, acct_key)

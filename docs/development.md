@@ -17,7 +17,7 @@ Run `make help` for the list.
 | `make clean` | Stop the stack and delete the volumes. |
 
 The Makefile variable `GEMINI` (default `0`) adds `docker-compose.gemini.yml` when it is `1`. That file joins the
-`api` service to the network of the free development proxy described in
+`app` service to the network of the free development proxy described in
 [dev/llm-proxy.md](dev/llm-proxy.md). Use the same value for every target, for example
 `make up GEMINI=1` and `make down GEMINI=1`. `make e2e` and `make e2e-down` always include it.
 
@@ -27,7 +27,7 @@ To develop against the proxy, uncomment the `llm-proxy` provider at the end of `
 
 ## Unit tests
 
-- `make test-be` runs `pytest` in the `api-test` container (profile `test`, Dockerfile target `test`) against real
+- `make test-be` runs `pytest` in the `api-test` container (profile `test`, target `test` of the root `Dockerfile`) against real
   Postgres and MinIO from compose. It creates and uses the database `ensemble_chat_test` and the bucket
   `ensemble-chat-test`, and refuses to run on a database whose name does not end in `_test`.
 - `make test-fe` runs `npm ci && npm test && npm run build` (vitest, `tsc --noEmit`, Vite build) in a
@@ -48,17 +48,17 @@ Pushing a tag that starts with `v` runs `.github/workflows/release.yml`:
 git tag v0.1.0 && git push origin v0.1.0
 ```
 
-It builds the `api` and `web` images for `linux/amd64` and `linux/arm64`, pushes them to
-`ghcr.io/ensemlabs/peep-api` and `ghcr.io/ensemlabs/peep-web` tagged `0.1.0` and `latest` (a pre-release tag such
-as `v0.2.0-rc.1` does not move `latest`), then creates a GitHub Release with generated notes. Users run the images
-with `docker-compose.ghcr.yml` (see the README). After the first release, set the two GHCR packages to public.
+It builds the single `Dockerfile` image for `linux/amd64` and `linux/arm64`, pushes it to
+`ghcr.io/ensemlabs/peep` tagged `0.1.0` and `latest` (a pre-release tag such
+as `v0.2.0-rc.1` does not move `latest`), then creates a GitHub Release with generated notes. Users run the image
+with `docker-compose.ghcr.yml` (see the README). After the first release, set the GHCR package to public.
 
 ## End-to-end tests
 
 `make e2e` brings the stack up with `docker-compose.yml`, `docker-compose.gemini.yml` and `docker-compose.e2e.yml`
 (it always joins the development provider, whatever `GEMINI` is), waits for `/api/health`, runs the Playwright suite in
 `e2e/` in the `e2e` container (Playwright 1.65.0, image `mcr.microsoft.com/playwright:v1.65.0-noble`, browser at
-`http://web`), then runs `e2e/check-db.sh`. `make e2e-down` stops the stack. The `ADMIN_EMAIL` and `ADMIN_PASSWORD`
+`http://peep:8000`, a network alias of the `app` service: Chromium upgrades the single-label host `app` to https), then runs `e2e/check-db.sh`. `make e2e-down` stops the stack. The `ADMIN_EMAIL` and `ADMIN_PASSWORD`
 from `.env` are used to sign in as admin.
 
 - **Models file:** `docker-compose.e2e.yml` sets `MODELS_CONFIG=/app/config-e2e/models.e2e.yaml` and mounts `e2e/config/`.
@@ -66,7 +66,7 @@ from `.env` are used to sign in as admin.
   Off and High) with `dev.model_switcher: true`, so tests can also pick the `replay:*` demo models
   (`REPLAY_ENABLED=true`). The file holds no secrets; the key comes from `LLM_API_KEY` in `.env`.
 - **Throttles:** the overlay raises `IP_LOGIN_MAX` and `REG_MAX` to 1000 so a whole suite from one IP is not
-  throttled, keeps `LOGIN_MAX_FAILURES` at 5 so the lockout test works, and adds `http://web` to `APP_ORIGINS`.
+  throttled, keeps `LOGIN_MAX_FAILURES` at 5 so the lockout test works, and adds `http://peep:8000` to `APP_ORIGINS`.
 - **Projects** (`e2e/playwright.config.ts`): `desktop` (Chromium 1440x900) runs every spec; `tablet` (Chromium
   768x1024) and `mobile` (the iPhone 13 device, WebKit) run only the responsive spec `a10-responsive.spec.ts`.
 - **Specs:** `e2e/tests/a01`-`a15` (redirect, pending, login throttle, admin approval, thinking, image, attachments,

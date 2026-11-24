@@ -1,8 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
 
-const baseURL = process.env.BASE_URL ?? 'http://web'
+const baseURL = process.env.BASE_URL ?? 'http://peep:8000'
 
-// http://web is not a secure context; the clipboard API (A5) needs one, so treat it as such in Chromium.
+// http://peep:8000 is not a secure context; the clipboard API (A5) needs one, so treat it as such in Chromium.
 // The flag is only honoured by the full Chromium build (channel 'chromium', new headless), not the default headless shell.
 const chromiumLaunch = { args: [`--unsafely-treat-insecure-origin-as-secure=${new URL(baseURL).origin}`] }
 const chromiumUse = { channel: 'chromium', permissions: ['clipboard-read', 'clipboard-write'], launchOptions: chromiumLaunch }

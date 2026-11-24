@@ -15,7 +15,7 @@ import {
 
 export { expect }
 
-export const BASE_URL = process.env.BASE_URL ?? 'http://web'
+export const BASE_URL = process.env.BASE_URL ?? 'http://peep:8000'
 /** Sent on every API request: the API rejects state-changing requests whose Origin is not in APP_ORIGINS. */
 export const ORIGIN = new URL(BASE_URL).origin
 export const PASSWORD = 'E2e-Passw0rd-42!'

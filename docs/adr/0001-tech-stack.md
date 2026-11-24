@@ -16,7 +16,7 @@
 | UI parts | Radix primitives, lucide icons, react-markdown + remark-gfm, shiki, yet-another-react-lightbox | Accessible dialogs and menus; markdown without raw HTML; syntax highlighting loaded per language; a lightbox with zoom, thumbnails, video and download. |
 | State and data | TanStack Query (server state), zustand (running replies), a pure `applyEvent` reducer | The stream state is a plain reducer over SSE events and is unit-tested. |
 | Streaming | SSE over `fetch` with `eventsource-parser` | Needs POST and cookies, which `EventSource` cannot do. Replies run in the API process and clients attach and detach. |
-| Web server | nginx serving the SPA and proxying `/api/` | One origin: no CORS, cookies work. The only published port. Rewrites `X-Forwarded-For` for the throttle. |
+| Web server | FastAPI serves the built SPA next to `/api` | One origin: no CORS, cookies work, one image and one published port. Sets the security headers itself; `X-Forwarded-For` is trusted only from `TRUSTED_PROXIES`. |
 | i18n | Typed dictionaries (`en.ts`, `vi.ts`) and a `useT()` hook | Two languages only. TypeScript forces both files to have the same keys. No library. |
 | Secrets | Fernet (`cryptography`) with a key in `SECRETS_KEY` | Plugin header values are encrypted at rest and never returned. No external secret store to run. |
 | Token counts | `tiktoken` (`o200k_base`, baked in the image at build) plus the provider's own usage when reported | Context numbers work offline; real numbers win when available. |

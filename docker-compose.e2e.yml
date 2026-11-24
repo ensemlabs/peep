@@ -1,13 +1,17 @@
 # Playwright e2e overlay: used by `make e2e` together with docker-compose.yml (+ docker-compose.gemini.yml).
 services:
-  api:
+  app:
+    networks:
+      # Chromium force-upgrades the single-label host "app" to https (.app is an HSTS-preloaded TLD), so the browser uses this alias.
+      backend:
+        aliases: [peep]
     environment:
       # Raise the per-IP throttles that a whole suite from one IP would trip; the per-account lockout (A3) stays at 5.
       IP_LOGIN_MAX: "1000"
       REG_MAX: "1000"
       LOGIN_MAX_FAILURES: "5"
-      # The browser in the e2e container talks to http://web (keep the .env value, append ours).
-      APP_ORIGINS: "${APP_ORIGINS:-http://localhost:8090,http://127.0.0.1:8090},http://web"
+      # The browser in the e2e container talks to http://peep:8000 (keep the .env value, append ours).
+      APP_ORIGINS: "${APP_ORIGINS:-http://localhost:8090,http://127.0.0.1:8090},http://peep:8000"
       # Real Gemini (dev proxy) + model switcher + replay:* models.
       MODELS_CONFIG: /app/config-e2e/models.e2e.yaml
       REPLAY_ENABLED: "true"
@@ -25,11 +29,11 @@ services:
       - ./e2e:/e2e
     environment:
       HOME: /tmp
-      BASE_URL: http://web
+      BASE_URL: http://peep:8000
       ADMIN_EMAIL: ${ADMIN_EMAIL:?set in .env}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set in .env}
     depends_on:
-      - web
+      - app
     networks: [backend]
     # Extra args (make e2e ARGS="--grep @gemini") arrive as "$@".
     entrypoint: ["sh", "-c", "npm ci --no-audit --no-fund && exec npx playwright test \"$$@\"", "--"]

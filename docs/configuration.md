@@ -64,7 +64,7 @@ when `config/models.yaml` does not exist; `.env.example` has them commented out.
 | `SESSION_IDLE_DAYS` | `7` | Sliding session lifetime. |
 | `SESSION_ABSOLUTE_DAYS` | `30` | Hard session lifetime. |
 | `SESSION_REFRESH_SECONDS` | `3600` | A session is extended at most once per this interval. |
-| `TRUSTED_PROXIES` | `172.16.0.0/12,10.0.0.0/8,192.168.0.0/16` | CIDRs whose `X-Forwarded-For` is trusted (the nginx container). |
+| `TRUSTED_PROXIES` | empty | CIDRs of reverse proxies whose `X-Forwarded-For` is trusted. Empty trusts nobody: the TCP peer is the client IP (login throttling keys on it). Set it only if a proxy runs in front of the app, see [Running behind a reverse proxy](architecture.md#running-behind-a-reverse-proxy). |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | empty | If both are set, an active admin is created on startup, or an existing user with that email is promoted (its password is not changed). |
 | `S3_ENDPOINT` | `http://minio:9000` | S3 endpoint. |
 | `S3_BUCKET` | `ensemble-chat` | Bucket, created on startup if missing. |
@@ -97,8 +97,8 @@ when `config/models.yaml` does not exist; `.env.example` has them commented out.
 | `POSTGRES_USER`, `POSTGRES_PASSWORD` | (required) | Database user and password. |
 | `POSTGRES_DB` | `ensemble_chat` | Database name. |
 | `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` | (required) | MinIO root credentials. |
-| `WEB_PORT` | `8090` | Host port of the web service, bound to `127.0.0.1`. |
-| `NGINX_MAX_BODY_MB` | `220` | nginx `client_max_body_size`. Keep it above `MAX_UPLOAD_MB`, because multipart adds overhead. |
+| `STATIC_DIR` | `/app/static` | Where the app looks for the built SPA (set by the image; no SPA is served if it has no `index.html`). |
+| `WEB_PORT` | `8090` | Host port of the `app` service (container port 8000), bound to `127.0.0.1`. |
 
 ## Internal names
 

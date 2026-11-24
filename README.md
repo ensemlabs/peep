@@ -123,11 +123,11 @@ cp config/models.example.yaml config/models.yaml
 4. Open http://127.0.0.1:8090 and log in with `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
 
 `make up` also creates the two files if they are missing. After changing `config/models.yaml`, run
-`docker compose restart api`. The built-in `replay:*` demo runs need no provider (see [docs/usage.md](docs/usage.md)).
+`docker compose restart app`. The built-in `replay:*` demo runs need no provider (see [docs/usage.md](docs/usage.md)).
 
-### Run the prebuilt images
+### Run the prebuilt image
 
-To skip the build, use the images published to GHCR (`linux/amd64` and `linux/arm64`). Prepare `.env` and
+To skip the build, use the single image `ghcr.io/ensemlabs/peep` published to GHCR (`linux/amd64` and `linux/arm64`; it runs next to the official Postgres and MinIO images). Prepare `.env` and
 `config/models.yaml` as above, then:
 
 ```bash
@@ -174,17 +174,23 @@ The variables you will most likely touch:
 
 Everything else (sessions, login throttling, S3, replay): [docs/configuration.md](docs/configuration.md).
 
+### Running behind a reverse proxy
+
+Peep serves plain HTTP. For a public site, terminate TLS in a proxy (Caddy, Traefik, nginx), set `COOKIE_SECURE=true`,
+add the public URL to `APP_ORIGINS`, and set `TRUSTED_PROXIES` to the proxy's address so the real client IP is used
+(it is empty by default: `X-Forwarded-For` is ignored). Disable proxy buffering for `/api` so SSE streams. See
+[docs/architecture.md](docs/architecture.md#running-behind-a-reverse-proxy).
+
 Internal names keep the project's earlier name: the Docker Compose project, database and bucket are `ensemble-chat`
 / `ensemble_chat`, the session cookie is `ec_session`, and browser settings use `ec_*` keys in `localStorage`.
 
 ## Architecture
 
 ```
-browser ── web (nginx: SPA + /api proxy, the only published port)
-              └── api (FastAPI, one worker)
-                     ├── postgres   users, chats, messages, plugins, skills
-                     ├── minio      uploaded and generated files (S3)
-                     └── LLM        any OpenAI-compatible endpoint
+browser ── app (FastAPI: SPA + /api, one worker, the only published port)
+              ├── postgres   users, chats, messages, plugins, skills
+              ├── minio      uploaded and generated files (S3)
+              └── LLM        any OpenAI-compatible endpoint
 ```
 
 Details and request flow: [docs/architecture.md](docs/architecture.md). HTTP and SSE contract:

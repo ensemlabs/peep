@@ -69,7 +69,7 @@ async def test_register_validation(client):
     r = await register(client, "a@example.com", name="x" * 81)
     assert r.status_code == 422
     r = await register(client, "a" * 250 + "@example.com")
-    assert r.json()["error"]["code"] == "invalid_email"
+    assert r.json()["error"]["code"] == "invalid_request"
 
 
 async def test_register_duplicate_email_case_insensitive(client):

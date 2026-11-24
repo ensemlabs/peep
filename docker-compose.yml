@@ -35,9 +35,10 @@ services:
     networks: [backend]
     restart: unless-stopped
 
-  api:
+  app:
+    # API + built SPA in one image; the only published port.
     build:
-      context: backend
+      context: .
       target: runtime
     env_file: .env
     environment:
@@ -55,13 +56,15 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8090}:8000"
     networks: [backend]
     restart: unless-stopped
 
   api-test:
     profiles: [test]
     build:
-      context: backend
+      context: .
       target: test
     env_file: .env
     environment:
@@ -75,20 +78,6 @@ services:
         condition: service_healthy
     command: ["pytest", "-q"]
     networks: [backend]
-
-  web:
-    # nginx + built SPA; the only published port. Proxies /api to api:8000 (same origin).
-    build: ./frontend
-    environment:
-      # nginx client_max_body_size: keep above the app's MAX_UPLOAD_MB (multipart overhead); the app enforces the real limit.
-      MAX_UPLOAD_MB: ${NGINX_MAX_BODY_MB:-220}
-    ports:
-      - "127.0.0.1:${WEB_PORT:-8090}:80"
-    depends_on:
-      api:
-        condition: service_healthy
-    networks: [backend]
-    restart: unless-stopped
 
 networks:
   backend:

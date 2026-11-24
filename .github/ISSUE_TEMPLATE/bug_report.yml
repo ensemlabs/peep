@@ -49,5 +49,5 @@ body:
     id: logs
     attributes:
       label: Logs
-      description: Relevant output of `docker compose logs api` or the browser console. Remove secrets.
+      description: Relevant output of `docker compose logs app` or the browser console. Remove secrets.
       render: shell

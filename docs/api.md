@@ -1,7 +1,7 @@
 # API
 
 HTTP and SSE contract of Peep's `api` service, as implemented in `backend/app/routers/`. The browser reaches it
-through nginx on the same origin (`/api/...`). There is no `/docs` or `/openapi.json`.
+on the same origin as the web app (`/api/...`). There is no `/docs` or `/openapi.json`.
 
 ## Conventions
 
@@ -238,12 +238,14 @@ Stored in the Postgres table `auth_throttle`. Over a limit the API returns 429 `
 | Key | Counts | Limit | Effect |
 | :--- | :--- | :--- | :--- |
 | `acct:<email>\|<ip>` | failed logins | `LOGIN_MAX_FAILURES` (5) within `THROTTLE_WINDOW_SECONDS` (15 min) | Lock for `LOCK_BASE_SECONDS` (15 min) x 2^(locks so far), at most `LOCK_MAX_SECONDS` (24 h). A correct login resets it. While locked the right password is refused. |
-| `ip:<ip>` | all login attempts | `IP_LOGIN_MAX` (30) per window | 429 until the window ends |
+| `ip:<ip>` | failed login attempts | `IP_LOGIN_MAX` (30) per window | 429 until the window ends |
 | `reg:<ip>` | registrations | `REG_MAX` (10) per `REG_WINDOW_SECONDS` (1 h) | 429 until the window ends |
 | `pw:<user id>` | wrong current passwords | same as `acct` | Lock as for `acct` |
 
-The client IP is the TCP peer. When the peer is inside `TRUSTED_PROXIES`, it is the first address of
-`X-Forwarded-For` (nginx overwrites that header with the address it sees).
+The client IP is the TCP peer. `TRUSTED_PROXIES` is empty by default, so `X-Forwarded-For` is ignored. When the peer is
+inside `TRUSTED_PROXIES`, the header is read from the right: each trusted hop is skipped and the first untrusted address
+is the client (entries further left are client-controlled and never used).
+Only failed logins count against `ip:<ip>`.
 
 ## Admin
 

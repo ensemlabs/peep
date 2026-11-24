@@ -42,7 +42,7 @@ e2e: env         ## Run the Playwright suite against the live stack (ARGS="--gre
 	$(COMPOSE_E2E) up -d --build
 	@port=$$(grep -E '^WEB_PORT=' .env | cut -d= -f2); port=$${port:-8090}; \
 	for i in $$(seq 1 60); do curl -fs -o /dev/null "http://127.0.0.1:$$port/api/health" && break; sleep 2; done; \
-	curl -fs -o /dev/null "http://127.0.0.1:$$port/api/health" || { echo "web did not become ready"; false; }
+	curl -fs -o /dev/null "http://127.0.0.1:$$port/api/health" || { echo "app did not become ready"; false; }
 	@rc=0; \
 	E2E_UID=$$(id -u) E2E_GID=$$(id -g) $(COMPOSE_E2E) --profile e2e run --rm e2e $(ARGS) || rc=$$?; \
 	sh e2e/check-db.sh $(COMPOSE_E2E) || { echo "A3 DB check failed"; rc=1; }; \

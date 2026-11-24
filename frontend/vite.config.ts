@@ -8,7 +8,7 @@ export default defineConfig({
   resolve: { alias: { '@': new URL('./src', import.meta.url).pathname } },
   server: {
     port: 5173,
-    // Convenience only: in production nginx proxies /api to the api service.
+    // Convenience only: in production the app serves both /api and the SPA.
     proxy: { '/api': { target: 'http://localhost:8000', changeOrigin: false } },
   },
   build: { chunkSizeWarningLimit: 1500 },

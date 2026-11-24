@@ -9,7 +9,10 @@ class Settings(BaseSettings):
     app_env: str = "production"
     # Comma-separated lists (parsed by the helpers below, not by pydantic-settings JSON decoding)
     app_origins: str = "http://localhost:8090,http://127.0.0.1:8090"
-    trusted_proxies: str = "172.16.0.0/12,10.0.0.0/8,192.168.0.0/16"
+    # Peers whose X-Forwarded-For is trusted. Empty = trust nobody (the TCP peer is the client).
+    trusted_proxies: str = ""
+    # Built SPA served by the app (the image copies it here); skipped when the directory has no index.html.
+    static_dir: str = "/app/static"
 
     cookie_secure: bool = False
     session_idle_days: int = 7

@@ -33,23 +33,23 @@ class _Body(BaseModel):
 
 
 class RegisterBody(_Body):
-    email: str
-    password: str
-    display_name: str
+    email: str = Field(max_length=254)
+    password: str = Field(max_length=1024)
+    display_name: str = Field(max_length=80)
 
 
 class LoginBody(_Body):
-    email: str
-    password: str
+    email: str = Field(max_length=254)
+    password: str = Field(max_length=1024)
 
 
 class ChangePasswordBody(_Body):
-    current_password: str
-    new_password: str
+    current_password: str = Field(max_length=1024)
+    new_password: str = Field(max_length=1024)
 
 
 class AdminPasswordBody(_Body):
-    new_password: str
+    new_password: str = Field(max_length=1024)
 
 
 class AdminPatchBody(_Body):
@@ -61,9 +61,9 @@ class AdminPatchBody(_Body):
 
 
 class AdminCreateBody(_Body):
-    email: str
-    display_name: str
-    password: str
+    email: str = Field(max_length=254)
+    display_name: str = Field(max_length=80)
+    password: str = Field(max_length=1024)
     role: Literal["user", "admin"] = "user"
     status: Literal["active", "pending"] = "active"
 

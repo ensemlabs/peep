@@ -12,24 +12,12 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  images:
-    name: Build and push ${{ matrix.name }}
+  image:
+    name: Build and push the image
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: api
-            image: ghcr.io/ensemlabs/peep-api
-            context: backend
-            target: runtime
-            description: "Peep API: FastAPI backend of the Peep chat UI for AI agents"
-          - name: web
-            image: ghcr.io/ensemlabs/peep-web
-            context: frontend
-            target: ""
-            description: "Peep web: nginx serving the Peep SPA and proxying /api"
+    env:
+      IMAGE: ghcr.io/ensemlabs/peep
     steps:
       - uses: actions/checkout@v5
       - uses: docker/setup-qemu-action@v3
@@ -43,29 +31,29 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ matrix.image }}
+          images: ${{ env.IMAGE }}
           # v0.1.0 -> 0.1.0 and latest (pre-releases such as v0.2.0-rc.1 do not move latest)
           tags: type=semver,pattern={{version}}
           labels: |
-            org.opencontainers.image.title=peep-${{ matrix.name }}
-            org.opencontainers.image.description=${{ matrix.description }}
+            org.opencontainers.image.title=peep
+            org.opencontainers.image.description=Peep: a ChatGPT-style web UI for AI agents (FastAPI backend and built SPA in one image)
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.licenses=MIT
             org.opencontainers.image.vendor=Ensemble Labs
       - uses: docker/build-push-action@v6
         with:
-          context: ${{ matrix.context }}
-          target: ${{ matrix.target }}
+          context: .
+          target: runtime
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.name }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   release:
     name: GitHub Release
-    needs: images
+    needs: image
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

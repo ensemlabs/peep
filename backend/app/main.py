@@ -1,18 +1,21 @@
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import Depends, FastAPI
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.db import get_db, get_engine
 from app.errors import ApiError, register_error_handlers
-from app.middleware import OriginCheckMiddleware
+from app.middleware import BodyLimitMiddleware, OriginCheckMiddleware, SecurityHeadersMiddleware
 from app.routers import admin, auth, context, conversations, files, messages, models, plugins, skills
 from app.services.model_registry import close_clients, get_registry
 from app.services.runs import registry
 from app.services.startup import check_secrets, mark_interrupted_messages, run_migrations, seed_admin
 from app.services.storage import ensure_bucket
+from app.spa import mount_spa
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger(__name__)
@@ -35,6 +38,8 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="ensemble-chat", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 app.add_middleware(OriginCheckMiddleware)
+app.add_middleware(BodyLimitMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)  # outermost: also covers early rejections and errors
 register_error_handlers(app)
 
 
@@ -57,3 +62,6 @@ app.include_router(messages.router)
 app.include_router(context.router)
 app.include_router(skills.router)
 app.include_router(plugins.router)
+
+# Last: the catch-all must come after every /api route.
+mount_spa(app, Path(get_settings().static_dir))

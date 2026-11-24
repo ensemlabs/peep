@@ -67,9 +67,10 @@ async def test_failures_are_per_email_and_ip(make_client):
 async def test_ip_login_limit(client, settings, monkeypatch):
     monkeypatch.setattr(settings, "ip_login_max", 3)
     await create_user("a@example.com")
-    assert (await login(client, "a@example.com")).status_code == 200
-    assert (await login(client, "a@example.com")).status_code == 200
-    assert (await login(client, "a@example.com")).status_code == 200
+    # successful logins never consume the per-IP budget
+    for _ in range(6):
+        assert (await login(client, "a@example.com")).status_code == 200
+    assert await _fail(client, 3, email="nobody@example.com") == [401] * 3
     r = await login(client, "a@example.com")
     assert r.status_code == 429 and "retry-after" in r.headers
 
@@ -90,19 +91,56 @@ async def test_disabled_account_only_after_correct_password(client):
     assert r.status_code == 403 and r.json()["error"]["code"] == "account_disabled"
 
 
-async def test_xff_honoured_only_from_trusted_peer(make_client):
+async def test_xff_walked_right_to_left(make_client, settings, monkeypatch):
+    monkeypatch.setattr(settings, "trusted_proxies", "172.16.0.0/12,10.0.0.0/8")
     await create_user("a@example.com")
-    # trusted peer (docker network): the XFF first hop is the client
-    proxy = make_client(peer="172.18.0.5", headers={"X-Forwarded-For": "203.0.113.7, 172.18.0.5"})
-    await _fail(proxy, 5)
-    assert (await sql("SELECT count(*) FROM auth_throttle WHERE key = 'acct:a@example.com|203.0.113.7'"))[0][0] == 1
-    # untrusted peer: header is ignored, the peer IP is used
+    # the client prepends "spoofed"; the trusted proxy appended the address it really saw
+    spoof = make_client(peer="172.18.0.5", headers={"X-Forwarded-For": "1.2.3.4, 203.0.113.7"})
+    await _fail(spoof, 1)
+    # two trusted proxies in a chain: peer -> 10.0.0.9 (trusted) -> 203.0.113.8 (client)
+    chain = make_client(peer="172.18.0.5", headers={"X-Forwarded-For": "6.6.6.6, 203.0.113.8, 10.0.0.9"})
+    await _fail(chain, 1)
+    # every hop trusted: the left-most valid one
+    inner = make_client(peer="172.18.0.5", headers={"X-Forwarded-For": "10.1.1.1, 10.0.0.9"})
+    await _fail(inner, 1)
+    # garbage XFF from a trusted peer falls back to the peer IP
+    junk = make_client(peer="10.1.2.3", headers={"X-Forwarded-For": "not-an-ip"})
+    await _fail(junk, 1)
+    keys = {r[0] for r in await sql("SELECT key FROM auth_throttle")}
+    assert {"acct:a@example.com|203.0.113.7", "acct:a@example.com|203.0.113.8", "acct:a@example.com|10.1.1.1",
+            "acct:a@example.com|10.1.2.3"} <= keys
+    assert not any("1.2.3.4" in k or "6.6.6.6" in k for k in keys)
+
+
+async def test_xff_untrusted_peer_ignored(make_client, settings, monkeypatch):
+    monkeypatch.setattr(settings, "trusted_proxies", "172.16.0.0/12,10.0.0.0/8")
+    await create_user("a@example.com")
     direct = make_client(peer="198.51.100.4", headers={"X-Forwarded-For": "203.0.113.99"})
     await _fail(direct, 1)
     keys = {r[0] for r in await sql("SELECT key FROM auth_throttle")}
     assert "acct:a@example.com|198.51.100.4" in keys
     assert not any("203.0.113.99" in k for k in keys)
-    # garbage XFF from a trusted peer falls back to the peer IP
-    junk = make_client(peer="10.1.2.3", headers={"X-Forwarded-For": "not-an-ip"})
-    await _fail(junk, 1)
-    assert "acct:a@example.com|10.1.2.3" in {r[0] for r in await sql("SELECT key FROM auth_throttle")}
+
+
+async def test_xff_ignored_when_no_proxy_is_trusted(make_client, settings, monkeypatch):
+    # The default: nobody is trusted, so a spoofed header can never pick the throttle key.
+    monkeypatch.setattr(settings, "trusted_proxies", "")
+    await create_user("a@example.com")
+    for peer in ("172.18.0.1", "10.1.2.3", "198.51.100.4"):
+        c = make_client(peer=peer, headers={"X-Forwarded-For": "203.0.113.7"})
+        await _fail(c, 1)
+    keys = {r[0] for r in await sql("SELECT key FROM auth_throttle")}
+    assert "acct:a@example.com|172.18.0.1" in keys and "acct:a@example.com|198.51.100.4" in keys
+    assert not any("203.0.113.7" in k for k in keys)
+
+
+async def test_xff_first_hop_used_from_configured_proxy(make_client, settings, monkeypatch):
+    monkeypatch.setattr(settings, "trusted_proxies", "192.0.2.10")
+    await create_user("a@example.com")
+    proxy = make_client(peer="192.0.2.10", headers={"X-Forwarded-For": "203.0.113.7, 192.0.2.10"})
+    await _fail(proxy, 1)
+    other = make_client(peer="192.0.2.11", headers={"X-Forwarded-For": "203.0.113.8"})
+    await _fail(other, 1)
+    keys = {r[0] for r in await sql("SELECT key FROM auth_throttle")}
+    assert "acct:a@example.com|203.0.113.7" in keys
+    assert "acct:a@example.com|192.0.2.11" in keys

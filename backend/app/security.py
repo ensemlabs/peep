@@ -73,18 +73,27 @@ def _trusted_networks(spec: tuple[str, ...]) -> tuple[ipaddress.IPv4Network | ip
 
 
 def client_ip(request: Request) -> str:
-    """Peer IP, or the first X-Forwarded-For hop when the peer is a trusted proxy."""
+    """The client address. Without trusted proxies it is the TCP peer.
+
+    When the peer is a trusted proxy, X-Forwarded-For is walked right to left: each trusted hop hands over to the
+    entry it appended, and the first untrusted address is the client. Entries further left are client-controlled and
+    never trusted. If every hop is trusted, the left-most valid one is returned.
+    """
     peer = request.client.host if request.client else "unknown"
     try:
-        peer_ip = ipaddress.ip_address(peer)
+        current = ipaddress.ip_address(peer)
     except ValueError:
         return peer
     nets = _trusted_networks(tuple(get_settings().trusted_proxy_cidrs))
-    if any(peer_ip in n for n in nets):
-        xff = request.headers.get("x-forwarded-for", "")
-        first = xff.split(",")[0].strip()
+    if not any(current in n for n in nets):
+        return str(current)
+    hops = [h.strip() for h in ",".join(request.headers.getlist("x-forwarded-for")).split(",")]
+    for raw in reversed(hops):
         try:
-            return str(ipaddress.ip_address(first))
+            hop = ipaddress.ip_address(raw)
         except ValueError:
-            pass
-    return str(peer_ip)
+            break  # garbage: stop at the last address we could vouch for
+        current = hop
+        if not any(hop in n for n in nets):
+            break
+    return str(current)

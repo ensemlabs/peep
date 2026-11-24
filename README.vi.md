@@ -124,12 +124,12 @@ cp config/models.example.yaml config/models.yaml
 
 4. Mở http://127.0.0.1:8090 và đăng nhập bằng `ADMIN_EMAIL` và `ADMIN_PASSWORD`.
 
-`make up` cũng tự tạo hai file trên nếu còn thiếu. Sau khi sửa `config/models.yaml`, chạy `docker compose restart api`.
+`make up` cũng tự tạo hai file trên nếu còn thiếu. Sau khi sửa `config/models.yaml`, chạy `docker compose restart app`.
 Các lượt chạy mẫu `replay:*` có sẵn không cần nhà cung cấp nào (xem [docs/usage.md](docs/usage.md)).
 
 ### Chạy image dựng sẵn
 
-Muốn bỏ qua bước build, dùng các image đã đăng trên GHCR (`linux/amd64` và `linux/arm64`). Chuẩn bị `.env` và
+Muốn bỏ qua bước build, dùng image duy nhất `ghcr.io/ensemlabs/peep` đã đăng trên GHCR (`linux/amd64` và `linux/arm64`). Chuẩn bị `.env` và
 `config/models.yaml` như trên, rồi:
 
 ```bash
@@ -178,17 +178,23 @@ Các biến bạn có thể sẽ cần chỉnh:
 Phần còn lại (phiên đăng nhập, giới hạn đăng nhập, S3, replay): [docs/configuration.md](docs/configuration.md)
 (viết bằng tiếng Anh).
 
+### Chạy sau reverse proxy
+
+Peep phục vụ HTTP thường. Với site công khai, hãy kết thúc TLS ở một proxy (Caddy, Traefik, nginx), đặt
+`COOKIE_SECURE=true`, thêm URL công khai vào `APP_ORIGINS` và đặt `TRUSTED_PROXIES` là địa chỉ của proxy để lấy đúng IP
+client (mặc định để trống: bỏ qua `X-Forwarded-For`). Tắt buffering của proxy cho `/api` để SSE chảy liên tục. Xem
+[docs/architecture.md](docs/architecture.md#running-behind-a-reverse-proxy).
+
 Một số tên nội bộ vẫn giữ tên cũ của dự án: project Docker Compose, cơ sở dữ liệu và bucket là `ensemble-chat` /
 `ensemble_chat`, cookie phiên là `ec_session`, còn cài đặt trên trình duyệt lưu trong `localStorage` với khoá `ec_*`.
 
 ## Kiến trúc
 
 ```
-trình duyệt ── web (nginx: giao diện SPA + proxy /api, cổng duy nhất được mở ra ngoài)
-                  └── api (FastAPI, một worker)
-                         ├── postgres   người dùng, chat, tin nhắn, plugin, skill
-                         ├── minio      tệp tải lên và tệp được tạo ra (S3)
-                         └── LLM        mọi endpoint tương thích OpenAI
+trình duyệt ── app (FastAPI: giao diện SPA + /api, một worker, cổng duy nhất được mở ra ngoài)
+                  ├── postgres   người dùng, chat, tin nhắn, plugin, skill
+                  ├── minio      tệp tải lên và tệp được tạo ra (S3)
+                  └── LLM        mọi endpoint tương thích OpenAI
 ```
 
 Chi tiết và luồng xử lý: [docs/architecture.md](docs/architecture.md). Hợp đồng HTTP và SSE:
