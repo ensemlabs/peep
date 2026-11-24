@@ -163,8 +163,7 @@
     "type": "tool",
     "name": "run_tests",
     "input": {
-     "command": "pytest -q",
-     "cwd": "."
+     "path": "tests/test_primes.py"
     },
     "output": null,
     "files": [],
@@ -356,7 +355,7 @@
     "type": "tool",
     "name": "generate_images",
     "input": {
-     "prompt": "benchmark charts, one per algorithm",
+     "prompt": "benchmark charts for the is_prime variants (illustrative): time, scaling, speedup, memory, summary",
      "count": 5
     },
     "output": null,
@@ -369,7 +368,7 @@
    "op": "delta",
    "part_id": "imgs",
    "field": "output",
-   "text": "Rendering 5 charts..."
+   "text": "Rendering 5 charts (time, scaling, speedup, memory, summary)..."
   },
   {
    "after_ms": 800,
@@ -401,7 +400,7 @@
     "type": "tool",
     "name": "render_video",
     "input": {
-     "title": "Benchmark walkthrough",
+     "title": "is_prime: how much faster? (illustrative benchmark)",
      "duration_s": 6
     },
     "output": null,
@@ -414,7 +413,7 @@
    "op": "delta",
    "part_id": "video",
    "field": "output",
-   "text": "Encoding webm (VP9) and mp4 (H.264)..."
+   "text": "Animating the speedup chart, encoding webm (VP9) and mp4 (H.264)..."
   },
   {
    "after_ms": 900,
