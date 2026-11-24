@@ -43,7 +43,7 @@ export function ImageGallery({ images }: { images: FileMeta[] }) {
           <div
             key={img.id}
             data-testid="gallery-item"
-            className={cn('group relative overflow-hidden rounded-xl bg-surface-2', !single && 'aspect-square')}
+            className={cn('group relative overflow-hidden rounded-xl bg-surface-2', !single && 'aspect-[4/3]')}
           >
             <button
               type="button"

@@ -45,4 +45,30 @@ describe('ImageGallery', () => {
       expect(srcs).not.toContain('/api/files/f2/thumb')
     })
   })
+  it('uses 4:3 tiles in grids (not square) so wide images are not cropped badly', () => {
+    renderWithI18n(<ImageGallery images={imgs(3)} />)
+    for (const tile of screen.getAllByTestId('gallery-item')) {
+      expect(tile.className).toContain('aspect-[4/3]')
+      expect(tile.className).not.toContain('aspect-square')
+    }
+    for (const img of screen.getAllByRole('img')) expect(img.className).toContain('object-cover')
+  })
+  it('keeps the single image at its natural aspect (no fixed tile ratio), capped by max height', () => {
+    renderWithI18n(<ImageGallery images={imgs(1)} />)
+    expect(screen.getByTestId('gallery-item').className).not.toMatch(/aspect-/)
+    expect(screen.getByRole('img').className).toContain('max-h-[480px]')
+  })
+  it('lays out 2, 3 and 5 images with 4:3 tiles and the right columns, and a +N tile keeps the same ratio', () => {
+    for (const [n, cls] of [[2, 'grid-cols-2'], [3, 'grid-cols-2'], [5, 'grid-cols-3']] as const) {
+      const { unmount } = renderWithI18n(<ImageGallery images={imgs(n)} />)
+      expect(screen.getByTestId('gallery').className).toContain(cls)
+      expect(screen.getAllByTestId('gallery-item')).toHaveLength(n)
+      unmount()
+    }
+    renderWithI18n(<ImageGallery images={imgs(8)} />)
+    const tiles = screen.getAllByTestId('gallery-item')
+    expect(tiles).toHaveLength(6)
+    expect(tiles[5].className).toContain('aspect-[4/3]')
+    expect(screen.getByTestId('gallery-more')).toHaveTextContent('+2')
+  })
 })
