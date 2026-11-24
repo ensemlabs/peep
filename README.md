@@ -75,36 +75,6 @@ without a model.
 - Vietnamese and English, light and dark theme.
 - Peep, the yellow chick, greets you in a new chat and keeps you company while a reply is on its way.
 
-## Screenshots
-
-<table>
-<tr>
-<td width="50%" valign="top"><img src="docs/images/hero-light.jpg" alt="Light theme: a demo agent run with a Thought row, plan, tool rows and an image gallery" width="100%"><br><b>Light and dark</b><br><sub>Both themes, same layout.</sub></td>
-<td width="50%" valign="top"><img src="docs/images/gallery-lightbox.jpg" alt="Image lightbox on a sticker sheet of the Peep mascot, with thumbnails and zoom" width="100%"><br><b>Gallery and lightbox</b><br><sub>Zoom, step through, download.</sub></td>
-</tr>
-<tr>
-<td width="50%" valign="top"><img src="docs/images/empty-peep.jpg" alt="A new chat: Peep greets the user above the composer and suggestion cards" width="100%"><br><b>A new chat</b><br><sub>Peep says hello; one tap to start.</sub></td>
-<td width="50%" valign="top"><img src="docs/images/thinking-live.jpg" alt="The Thinking row streaming its reasoning live, with a running spinner in the sidebar" width="100%"><br><b>Live thinking</b><br><sub>Reasoning streams in as it happens.</sub></td>
-</tr>
-<tr>
-<td width="50%" valign="top"><img src="docs/images/context-ring.jpg" alt="Context ring popover: token breakdown, last response and conversation totals" width="100%"><br><b>Context ring</b><br><sub>See what fills the context window.</sub></td>
-<td width="50%" valign="top"><img src="docs/images/video-clip.jpg" alt="A video card playing an 8-second clip in the conversation" width="100%"><br><b>Video in the flow</b><br><sub>Seekable player, download included.</sub></td>
-</tr>
-<tr>
-<td colspan="2" align="center" valign="top"><img src="docs/images/integrations.jpg" alt="Settings, Plugins and Skills tab with skill packages and MCP servers" width="50%"><br><b>Plugins &amp; Skills</b><br><sub>Stored for a future agent.</sub></td>
-</tr>
-</table>
-
-**On your phone**
-
-<table>
-<tr>
-<td align="center" valign="top"><img src="docs/images/mobile-empty.jpg" alt="Phone, dark theme: new chat with Peep" width="260"><br><b>New chat</b><br><sub>Dark theme.</sub></td>
-<td align="center" valign="top"><img src="docs/images/mobile-chat.jpg" alt="Phone, light theme: demo run with tool rows and gallery" width="260"><br><b>Conversation</b><br><sub>Rows and media fit the screen.</sub></td>
-<td align="center" valign="top"><img src="docs/images/mobile-drawer.jpg" alt="Phone: the sidebar drawer with pinned, unread and failed chats" width="260"><br><b>Drawer</b><br><sub>Search, pin, status dots.</sub></td>
-</tr>
-</table>
-
 ## Quick start
 
 You need Docker with Compose v2.

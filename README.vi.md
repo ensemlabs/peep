@@ -75,36 +75,6 @@ sẵn để bạn xem đủ mọi thành phần mà không cần model.
 - Tiếng Việt và tiếng Anh, giao diện sáng và tối.
 - Peep, chú gà con màu vàng, chào bạn khi mở cuộc chat mới và ở bên cạnh trong lúc chờ câu trả lời.
 
-## Ảnh giao diện
-
-<table>
-<tr>
-<td width="50%" valign="top"><img src="docs/images/hero-light.jpg" alt="Giao diện sáng: một lượt chạy agent mẫu với dòng Thought, kế hoạch, các dòng công cụ và bộ ảnh" width="100%"><br><b>Sáng và tối</b><br><sub>Cả hai giao diện, cùng một bố cục.</sub></td>
-<td width="50%" valign="top"><img src="docs/images/gallery-lightbox.jpg" alt="Lightbox xem tấm sticker chú gà Peep, có ảnh thu nhỏ và phóng to" width="100%"><br><b>Bộ ảnh và lightbox</b><br><sub>Phóng to, lướt qua từng ảnh, tải về.</sub></td>
-</tr>
-<tr>
-<td width="50%" valign="top"><img src="docs/images/empty-peep.jpg" alt="Cuộc chat mới: Peep chào người dùng phía trên ô nhập và các thẻ gợi ý" width="100%"><br><b>Cuộc chat mới</b><br><sub>Peep chào bạn, chạm một cái là bắt đầu.</sub></td>
-<td width="50%" valign="top"><img src="docs/images/thinking-live.jpg" alt="Dòng Thinking đang hiện phần suy nghĩ theo thời gian thực, thanh bên có vòng quay đang chạy" width="100%"><br><b>Suy nghĩ trực tiếp</b><br><sub>Phần suy nghĩ hiện ra ngay khi model nghĩ.</sub></td>
-</tr>
-<tr>
-<td width="50%" valign="top"><img src="docs/images/context-ring.jpg" alt="Popover đồng hồ context: chi tiết token, câu trả lời gần nhất và tổng cả cuộc chat" width="100%"><br><b>Đồng hồ context</b><br><sub>Biết cái gì đang chiếm cửa sổ context.</sub></td>
-<td width="50%" valign="top"><img src="docs/images/video-clip.jpg" alt="Thẻ video đang phát đoạn clip 8 giây ngay trong cuộc chat" width="100%"><br><b>Video trong mạch chat</b><br><sub>Tua được, có nút tải về.</sub></td>
-</tr>
-<tr>
-<td colspan="2" align="center" valign="top"><img src="docs/images/integrations.jpg" alt="Cài đặt, thẻ Plugins và Skills với các gói skill và MCP server" width="50%"><br><b>Plugins &amp; Skills</b><br><sub>Lưu sẵn cho agent sau này.</sub></td>
-</tr>
-</table>
-
-**Trên điện thoại**
-
-<table>
-<tr>
-<td align="center" valign="top"><img src="docs/images/mobile-empty.jpg" alt="Điện thoại, nền tối: cuộc chat mới với Peep" width="260"><br><b>Cuộc chat mới</b><br><sub>Giao diện tối.</sub></td>
-<td align="center" valign="top"><img src="docs/images/mobile-chat.jpg" alt="Điện thoại, nền sáng: lượt chạy mẫu với các dòng công cụ và bộ ảnh" width="260"><br><b>Hội thoại</b><br><sub>Dòng công cụ và ảnh vừa màn hình.</sub></td>
-<td align="center" valign="top"><img src="docs/images/mobile-drawer.jpg" alt="Điện thoại: ngăn kéo thanh bên với chat đã ghim, chưa đọc và bị lỗi" width="260"><br><b>Ngăn kéo</b><br><sub>Tìm kiếm, ghim, chấm trạng thái.</sub></td>
-</tr>
-</table>
-
 ## Bắt đầu nhanh
 
 Bạn cần Docker với Compose v2.
