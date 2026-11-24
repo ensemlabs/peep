@@ -34,7 +34,8 @@ export function EmptyState({ onExample, name, hour = new Date().getHours() }: { 
         {who ? t(GREETING[timeOfDay(hour)], { name: who }) : t('chat.greetingNoName')}
       </h1>
       <p className="mt-1.5 text-sm text-muted">{t('chat.greetingSub')}</p>
-      <div className="mt-8 flex max-w-xl flex-wrap justify-center gap-2">
+      {/* Phones: a balanced 2×2 grid of equal chips; ≥ sm: one centred row. */}
+      <div className="mt-8 grid w-full max-w-xs grid-cols-2 gap-2 sm:flex sm:w-auto sm:max-w-xl sm:flex-wrap sm:justify-center">
         {EXAMPLES.map(({ key, label, icon: Icon, tone }) => (
           <button
             key={key}
@@ -42,7 +43,7 @@ export function EmptyState({ onExample, name, hour = new Date().getHours() }: { 
             data-testid="example-prompt"
             title={t(key)}
             onClick={() => onExample(t(key))}
-            className="flex items-center gap-2 rounded-full border border-line bg-bg px-4 py-2 text-sm transition-colors hover:bg-hover"
+            className="flex min-w-0 items-center justify-center gap-2 rounded-full border border-line bg-bg px-4 py-2 text-sm transition-colors hover:bg-hover"
           >
             <Icon className={cn('size-4', tone)} />
             {t(label)}
