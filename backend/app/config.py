@@ -1,6 +1,10 @@
 from functools import cache
 
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_TRUE = {"true", "1", "yes", "on", "t", "y"}
+_FALSE = {"false", "0", "no", "off", "f", "n"}
 
 
 class Settings(BaseSettings):
@@ -14,7 +18,8 @@ class Settings(BaseSettings):
     # Built SPA served by the app (the image copies it here); skipped when the directory has no index.html.
     static_dir: str = "/app/static"
 
-    cookie_secure: bool = False
+    # "auto" (Secure when every APP_ORIGINS entry is https), or an explicit true / false.
+    cookie_secure: str = "auto"
     session_idle_days: int = 7
     session_absolute_days: int = 30
     session_refresh_seconds: int = 3600
@@ -43,6 +48,7 @@ class Settings(BaseSettings):
     replay_enabled: bool = True
     replay_time_scale: float = 1.0  # multiplies fixture delays; tests use 0
     max_upload_mb: int = 200
+    max_runs_per_user: int = Field(3, ge=1)
 
     # Login / registration throttling (see services/throttle.py)
     throttle_window_seconds: int = 15 * 60
@@ -53,9 +59,31 @@ class Settings(BaseSettings):
     reg_max: int = 10
     reg_window_seconds: int = 3600
 
+    @field_validator("cookie_secure")
+    @classmethod
+    def _cookie_secure_value(cls, v: str) -> str:
+        n = v.strip().lower()
+        if n == "auto":
+            return n
+        if n in _TRUE:
+            return "true"
+        if n in _FALSE:
+            return "false"
+        raise ValueError("must be auto, true or false")
+
     @property
     def origins(self) -> set[str]:
         return {o.strip().rstrip("/").lower() for o in self.app_origins.split(",") if o.strip()}
+
+    @property
+    def cookie_secure_on(self) -> bool:
+        v = self.cookie_secure.strip().lower()
+        if v in _TRUE:
+            return True
+        if v in _FALSE:
+            return False
+        origins = self.origins
+        return bool(origins) and all(o.startswith("https://") for o in origins)
 
     @property
     def llm_model_allowlist(self) -> list[str]:

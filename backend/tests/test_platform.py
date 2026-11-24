@@ -1,3 +1,4 @@
+import pytest
 from sqlalchemy import select
 
 from app.config import get_settings
@@ -79,16 +80,58 @@ async def test_seed_admin_creates_and_is_idempotent(settings, monkeypatch):
     assert await verify_password(u.password_hash, "seed-password-123")
 
 
-async def test_seed_admin_promotes_existing_without_touching_password(settings, monkeypatch):
+async def test_seed_admin_promotes_existing_only_with_matching_password(settings, monkeypatch):
+    await create_user("boss@example.com", status="disabled")
+    monkeypatch.setattr(settings, "admin_email", "boss@example.com")
+    monkeypatch.setattr(settings, "admin_password", PASSWORD)
+    await seed_admin()
+    async with get_sessionmaker()() as db:
+        u = (await db.execute(select(User))).scalar_one()
+    assert (u.role, u.status) == ("admin", "active")
+    assert await verify_password(u.password_hash, PASSWORD)
+    audit = await sql("SELECT actor_id, actor_email, target_email, action, detail FROM admin_audit ORDER BY action")
+    assert audit == [
+        (None, "system", "boss@example.com", "user.role", {"from": "user", "to": "admin", "via": "seed"}),
+        (None, "system", "boss@example.com", "user.status", {"from": "disabled", "to": "active", "via": "seed"}),
+    ]
+
+
+async def test_seed_admin_skips_password_check_for_an_active_admin(settings, monkeypatch, caplog):
+    await create_user("boss@example.com", role="admin", status="active")
+    monkeypatch.setattr(settings, "admin_email", "boss@example.com")
+    monkeypatch.setattr(settings, "admin_password", "not-the-account-password")
+    await seed_admin()
+    assert "ADMIN_PASSWORD" not in caplog.text
+    assert (await sql("SELECT count(*) FROM admin_audit"))[0][0] == 0
+
+
+async def test_seed_admin_never_promotes_an_account_with_another_password(settings, monkeypatch, caplog):
+    # an attacker registered ADMIN_EMAIL first
     await create_user("boss@example.com", status="pending")
     monkeypatch.setattr(settings, "admin_email", "boss@example.com")
     monkeypatch.setattr(settings, "admin_password", "different-seed-password")
     await seed_admin()
     async with get_sessionmaker()() as db:
         u = (await db.execute(select(User))).scalar_one()
-    assert (u.role, u.status) == ("admin", "active")
+    assert (u.role, u.status) == ("user", "pending")
     assert await verify_password(u.password_hash, PASSWORD)
-    assert not await verify_password(u.password_hash, "different-seed-password")
+    assert "boss@example.com" in caplog.text and "different-seed-password" not in caplog.text
+    assert (await sql("SELECT count(*) FROM admin_audit"))[0][0] == 0
+
+
+async def test_default_credentials_refused_in_production(settings, monkeypatch):
+    from app.services.startup import check_default_credentials
+
+    monkeypatch.setattr(settings, "app_env", "production")
+    for name in ("ADMIN_PASSWORD", "POSTGRES_PASSWORD", "MINIO_ROOT_PASSWORD", "S3_SECRET_KEY"):
+        monkeypatch.setenv(name, "ok-value")
+    check_default_credentials()
+    monkeypatch.setenv("MINIO_ROOT_PASSWORD", "change-me-too-please")
+    with pytest.raises(RuntimeError) as e:
+        check_default_credentials()
+    assert "MINIO_ROOT_PASSWORD" in str(e.value) and "change-me-too" not in str(e.value)
+    monkeypatch.setattr(settings, "app_env", "test")
+    check_default_credentials()
 
 
 async def test_seed_admin_noop_without_env(settings, monkeypatch):

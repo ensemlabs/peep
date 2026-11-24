@@ -16,7 +16,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy
 
-RUN pip install --no-cache-dir uv
+RUN pip install --no-cache-dir uv==0.13.9
 WORKDIR /app
 
 COPY backend/pyproject.toml backend/uv.lock ./

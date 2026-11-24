@@ -1,17 +1,17 @@
 import {
-  expect, GEMINI_TIMEOUT, lastAssistant, selectModel, sendPrompt, setThinking, test,
+  expect, LIVE_LLM_ENABLED, LIVE_MODEL, LIVE_SKIP_MESSAGE, LIVE_TIMEOUT, lastAssistant, selectModel, sendPrompt, setThinking, test,
 } from './helpers'
 
-// Gemini (via the dev proxy) intermittently returns no thinking text even with reasoning_effort=high
-// (measured ~1 in 2 calls on 2026-11-24), so this spec gets one extra retry.
-test.describe.configure({ retries: 2, timeout: GEMINI_TIMEOUT })
+// Some live models intermittently return no thinking text even with reasoning_effort=high, so this spec gets extra retries.
+test.skip(!LIVE_LLM_ENABLED, LIVE_SKIP_MESSAGE)
+test.describe.configure({ retries: 2, timeout: LIVE_TIMEOUT })
 
 const PROMPT = 'Write a Python function is_prime(n) in a code block, then explain it in one sentence.'
 
-test('A5 @gemini: live thinking block, collapse to "Thought for Ns", toggle, python code block + copy', async ({ page, approved }) => {
+test('A5 @live-llm: live thinking block, collapse to "Thought for Ns", toggle, python code block + copy', async ({ page, approved }) => {
   void approved
   await page.goto('/')
-  await selectModel(page, 'gemini-pro')
+  await selectModel(page, LIVE_MODEL)
   await setThinking(page, 'high')
 
   // Record (from inside the page, so it cannot be missed) whether the thinking step was ever open and live
@@ -45,12 +45,12 @@ test('A5 @gemini: live thinking block, collapse to "Thought for Ns", toggle, pyt
     .evaluate((m) => [m, ...m.querySelectorAll('*')].some((el) => getComputedStyle(el).animationName !== 'none'))
     .catch(() => false)
   expect.soft(animated, 'pending mascot animates (soft)').toBe(true)
-  await expect(msg).toHaveAttribute('data-status', /complete|error|stopped/, { timeout: GEMINI_TIMEOUT - 30_000 })
-  await expect(msg, 'Gemini run did not complete (refusal / upstream error?)').toHaveAttribute('data-status', 'complete')
+  await expect(msg).toHaveAttribute('data-status', /complete|error|stopped/, { timeout: LIVE_TIMEOUT - 30_000 })
+  await expect(msg, 'Live model run did not complete (refusal / upstream error?)').toHaveAttribute('data-status', 'complete')
 
   await expect(page.getByTestId('reply-pending'), 'pending Pip is gone once content arrived').toHaveCount(0)
   const step = msg.getByTestId('step-thinking')
-  expect(await step.count(), 'Gemini produced no thinking part on this run (retry should cover it)').toBeGreaterThan(0)
+  expect(await step.count(), 'The live model produced no thinking part on this run (retry should cover it)').toBeGreaterThan(0)
   const live = await page.evaluate(() => (window as unknown as { __live: { text: number } | null }).__live)
   expect(live, 'thinking step was never open + live (shimmering label, non-empty text) while streaming').not.toBeNull()
 

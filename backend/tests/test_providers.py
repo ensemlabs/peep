@@ -208,3 +208,18 @@ async def test_history_image_limits(make_client, fake, monkeypatch):
     content = server.requests[0]["messages"][-1]["content"]
     assert [p["type"] for p in content] == ["text", "image_url", "image_url"]
     assert "[Attached file: p2.png" in content[0]["text"]
+
+
+async def test_history_total_image_bytes_cap(make_client, fake, monkeypatch):
+    from app.services import history
+
+    datas = [png_bytes(8, 8 + i) for i in range(3)]
+    monkeypatch.setattr(history, "MAX_TOTAL_IMAGE_BYTES", len(datas[0]) + len(datas[1]) + 1)
+    server = await fake(script=[chunk(content="ok")])
+    c, _ = await active_client(make_client)
+    cid = await new_conversation(c)
+    ids = [(await upload(c, d, f"p{i}.png", "image/png")).json()["file"]["id"] for i, d in enumerate(datas)]
+    await send_message(c, cid, "x", model="gemini-pro", attachment_ids=ids)
+    content = server.requests[0]["messages"][-1]["content"]
+    assert [p["type"] for p in content] == ["text", "image_url", "image_url"]
+    assert "[Attached file: p2.png" in content[0]["text"]

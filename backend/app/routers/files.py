@@ -260,7 +260,9 @@ async def file_content(
     db: AsyncSession = Depends(get_db),
 ):
     f = await _owned_file(db, user, file_id)
-    headers = _common_headers(f, f.mime)
+    # Only verified media keeps its type; every other file is opaque bytes whatever the client claimed on upload.
+    served_type = f.mime if f.kind in ("image", "video", "audio") else "application/octet-stream"
+    headers = _common_headers(f, served_type)
     headers["Content-Disposition"] = content_disposition(
         f.kind, f.filename, force_download=bool(download), inline_ok=True
     )

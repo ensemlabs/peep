@@ -5,7 +5,7 @@ Binary assets used by the `replay:*` fixtures (`../fixtures/*.json` reference th
 
 ## Provenance
 
-The five images are **AI-generated with Gemini via the dev proxy (llm-proxy) on 2026-11-24**. The small
+The five images are **AI-generated with Gemini on 2026-11-24**. The small
 sparkle in the corner of each image is Gemini's watermark and is left in on purpose. The video is **not** an AI
 video (Gemini could not render one at the time): it is a clip **assembled with ffmpeg from the five generated
 images** (slow zoom with crossfades). The chime is synthesized with ffmpeg (sine notes), not a recording.

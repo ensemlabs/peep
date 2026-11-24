@@ -60,17 +60,17 @@ when `config/models.yaml` does not exist; `.env.example` has them commented out.
 | :--- | :--- | :--- |
 | `DATABASE_URL` | (required) | SQLAlchemy URL, `postgresql+asyncpg://user:password@host:5432/db`. |
 | `APP_ORIGINS` | `http://localhost:8090,http://127.0.0.1:8090` | Comma-separated origins allowed to send state-changing `/api` requests (Origin or Referer check). Add your public URL when you publish the app. |
-| `COOKIE_SECURE` | `false` | Set `true` when the site is served over HTTPS. Adds `Secure` to the session cookie. |
+| `COOKIE_SECURE` | `auto` | `auto` turns `Secure` on when every `APP_ORIGINS` entry is https; `true` / `false` force it. With Secure on, the session cookie is named `__Host-ec_session` (Path `/`, no Domain), otherwise `ec_session`. |
 | `SESSION_IDLE_DAYS` | `7` | Sliding session lifetime. |
 | `SESSION_ABSOLUTE_DAYS` | `30` | Hard session lifetime. |
 | `SESSION_REFRESH_SECONDS` | `3600` | A session is extended at most once per this interval. |
 | `TRUSTED_PROXIES` | empty | CIDRs of reverse proxies whose `X-Forwarded-For` is trusted. Empty trusts nobody: the TCP peer is the client IP (login throttling keys on it). Set it only if a proxy runs in front of the app, see [Running behind a reverse proxy](architecture.md#running-behind-a-reverse-proxy). |
-| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | empty | If both are set, an active admin is created on startup, or an existing user with that email is promoted (its password is not changed). |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | empty | If both are set and no account has that email, an active admin is created on startup. An existing account is promoted to active admin only if `ADMIN_PASSWORD` matches its password (the change is written to the audit log as actor `system`); otherwise it is left untouched and an error is logged. In production, startup is refused while `ADMIN_PASSWORD`, `POSTGRES_PASSWORD`, `MINIO_ROOT_PASSWORD` or `S3_SECRET_KEY` contain `change-me`. |
 | `S3_ENDPOINT` | `http://minio:9000` | S3 endpoint. |
 | `S3_BUCKET` | `ensemble-chat` | Bucket, created on startup if missing. |
 | `S3_ACCESS_KEY`, `S3_SECRET_KEY` | empty | S3 credentials. |
 | `S3_STARTUP_TIMEOUT_SECONDS` | `30` | How long startup waits for S3 before failing. |
-| `SECRETS_KEY` | empty | Fernet key that encrypts plugin header values at rest. Without it, saving a plugin with headers fails with 503 `secrets_not_configured`. If plugins already exist and the key is missing or invalid, the API refuses to start. |
+| `SECRETS_KEY` | empty | Fernet key that encrypts plugin header values at rest. Without it, saving a plugin with headers fails with 503 `secrets_not_configured`. A set but invalid key, or plugins that already exist with a missing or wrong key, make the API refuse to start. |
 | `MODELS_CONFIG` | `/app/config/models.yaml` | Path of the models file inside the container (`./config` is mounted read-only at `/app/config`). |
 | `DEV_MODEL_SWITCHER` | `false` | Fallback mode only: same as `dev.model_switcher` in the file. |
 | `LLM_BASE_URL` | empty | Fallback only: OpenAI-compatible base URL, ending in `/v1`. |
@@ -80,6 +80,7 @@ when `config/models.yaml` does not exist; `.env.example` has them commented out.
 | `LLM_TIMEOUT_SECONDS` | `300` | Timeout of a model request (always applies). |
 | `REPLAY_ENABLED` | `true` | Allow the `replay:*` demo models (they are offered only with `dev.model_switcher`, or when `active` is a `replay:*` id). |
 | `REPLAY_TIME_SCALE` | `1.0` | Multiplies the delays of replay fixtures. `0` plays them instantly. |
+| `MAX_RUNS_PER_USER` | `3` | Replies one user can have running at once (users with a token limit always get 1). Beyond it a send answers 409 `too_many_runs`. |
 | `MAX_UPLOAD_MB` | `200` | Maximum upload size enforced by the API. |
 | `THROTTLE_WINDOW_SECONDS` | `900` | Window for failed-login and per-IP login counting. |
 | `LOGIN_MAX_FAILURES` | `5` | Failed logins per email and IP before a lock. |
@@ -98,7 +99,25 @@ when `config/models.yaml` does not exist; `.env.example` has them commented out.
 | `POSTGRES_DB` | `ensemble_chat` | Database name. |
 | `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` | (required) | MinIO root credentials. |
 | `STATIC_DIR` | `/app/static` | Where the app looks for the built SPA (set by the image; no SPA is served if it has no `index.html`). |
+| `E2E_LLM_BASE_URL`, `E2E_LLM_API_KEY`, `E2E_LLM_MODEL` | empty | Test only: OpenAI-compatible endpoint, key and model id for the `@live-llm` Playwright specs, which skip when `E2E_LLM_BASE_URL` is unset (see [development.md](development.md)). |
 | `WEB_PORT` | `8090` | Host port of the `app` service (container port 8000), bound to `127.0.0.1`. |
+
+## Upgrading an install that still has `change-me` secrets
+
+In production (`APP_ENV=production`, the default) the app refuses to start while `ADMIN_PASSWORD`, `POSTGRES_PASSWORD`,
+`MINIO_ROOT_PASSWORD` or `S3_SECRET_KEY` contains `change-me`. To rotate the values of a running install:
+
+1. **Postgres:** `POSTGRES_PASSWORD` only applies when the data directory is first created, so change the role first,
+   inside the running container: `docker compose exec postgres psql -U <POSTGRES_USER> -d <POSTGRES_DB> -c "ALTER USER <POSTGRES_USER> PASSWORD '<new>'"`.
+   Then put the same password in `POSTGRES_PASSWORD` and in `DATABASE_URL` in `.env`.
+2. **MinIO:** set the new `MINIO_ROOT_PASSWORD` (and `MINIO_ROOT_USER` if you change it) and the same values in
+   `S3_SECRET_KEY` / `S3_ACCESS_KEY`. MinIO picks the root credentials up on restart.
+3. **Admin:** set a new `ADMIN_PASSWORD`. It is only used to create the admin or to recover an account whose password
+   already equals it, so change the stored password in the UI (or via an admin) as well.
+4. `docker compose up -d` to restart with the new `.env`.
+
+On a development machine with nothing worth keeping, delete `.env`, run `make clean` (this deletes the volumes) and then
+`make env` to start over with generated secrets.
 
 ## Internal names
 

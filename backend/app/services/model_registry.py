@@ -230,7 +230,7 @@ def gemini_levels() -> dict[str, Any]:
 
 
 def fallback_registry() -> Registry:
-    """Backward-compatible registry built from LLM_* env settings (llm-proxy style)."""
+    """Backward-compatible registry built from LLM_* env settings ."""
     s = get_settings()
     if not s.llm_base_url or not s.llm_default_model:
         raise ConfigError(

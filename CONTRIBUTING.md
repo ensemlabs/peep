@@ -29,7 +29,7 @@ Run these before opening a pull request:
 
 CI runs both on every pull request. Add or update tests for new behaviour and bug fixes.
 
-The Playwright suite (`make e2e`) is **not** run in CI: it needs the free Gemini development proxy. Run it locally if
+The Playwright suite (`make e2e`) is **not** run in CI: part of it needs a live model endpoint (those specs skip without one). Run it locally if
 you change user-visible flows, or say in the pull request that you did not. See the end-to-end section of
 [docs/development.md](docs/development.md).
 
@@ -41,9 +41,24 @@ The history uses Conventional Commits: `type(scope): short summary` in lower cas
 - Scopes: `backend`, `frontend`, `e2e` (or none for repo-wide changes).
 - Examples: `feat(backend): per-user token limits`, `fix(frontend): 4:3 gallery tiles`, `docs: account management guide`.
 
+## Branches and releases
+
+```
+dev            day-to-day work: commits and pull requests go here
+ └─ dev/v0.1.1 cut from dev when a version is decided (dev/<version>)
+      └─ merged into main, then main is tagged v0.1.1 → image + GitHub Release
+```
+
+- Open pull requests against `dev`, not `main`. `main` only ever receives merges from a `dev/<version>` branch, so
+  it always matches the latest release.
+- To cut a version: `git switch dev && git pull && git switch -c dev/v0.1.1 && git push -u origin dev/v0.1.1`.
+  Fixes for that version go on `dev/v0.1.1` (and back into `dev`).
+- To publish it: merge `dev/v0.1.1` into `main` with `--no-ff`, tag the merge commit `v0.1.1` and push the tag
+  (see [docs/development.md](docs/development.md#releases)). Version tags follow semver: `vMAJOR.MINOR.PATCH`.
+
 ## Pull requests
 
-- Keep a pull request to one change; unrelated cleanups go in their own.
+- Target `dev`. Keep a pull request to one change; unrelated cleanups go in their own.
 - Fill in the template: what and why, how you tested it, screenshots for UI changes.
 - Update the docs (and the Vietnamese README if you touch the English one) when behaviour changes.
 - Tests pass, and no secrets, `.env` files or generated artifacts are included.

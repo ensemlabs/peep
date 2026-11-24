@@ -20,7 +20,10 @@ export const BASE_URL = process.env.BASE_URL ?? 'http://peep:8000'
 export const ORIGIN = new URL(BASE_URL).origin
 export const PASSWORD = 'E2e-Passw0rd-42!'
 export const REPLAY_MODEL = 'replay:agent-demo'
-export const GEMINI_TIMEOUT = 4 * 60_000
+export const LIVE_TIMEOUT = 4 * 60_000
+/** Live-model specs (tag @live-llm) need an OpenAI-compatible endpoint: E2E_LLM_BASE_URL (+ E2E_LLM_API_KEY, E2E_LLM_MODEL). */
+export const LIVE_LLM_ENABLED = Boolean(process.env.E2E_LLM_BASE_URL)
+export const LIVE_SKIP_MESSAGE = 'live-model spec skipped: set E2E_LLM_BASE_URL (and E2E_LLM_API_KEY, E2E_LLM_MODEL) to run it'
 
 export const fixturePath = (name: string) => path.join(__dirname, '..', 'fixtures', name)
 export const sha256 = (buf: Buffer) => createHash('sha256').update(buf).digest('hex')
@@ -222,7 +225,8 @@ export function conversationIdFrom(page: Page): string {
   return m[1]
 }
 
-export const GEMINI_MODEL = 'gemini-pro'
+/** Model id the e2e registry (e2e/config/models.e2e.yaml) exposes for the live endpoint. */
+export const LIVE_MODEL = process.env.E2E_LLM_MODEL || 'live-llm'
 export const ERROR_MODEL = 'replay:error-demo'
 
 export const lastAssistant = (page: Page): Locator => page.getByTestId('message-assistant').last()

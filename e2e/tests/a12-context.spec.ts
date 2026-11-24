@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 import {
-  conversationIdFrom, expect, fixturePath, GEMINI_MODEL, GEMINI_TIMEOUT, lastAssistant, REPLAY_MODEL, selectModel, sendPrompt,
+  conversationIdFrom, expect, fixturePath, LIVE_LLM_ENABLED, LIVE_MODEL, LIVE_SKIP_MESSAGE, LIVE_TIMEOUT, lastAssistant, REPLAY_MODEL, selectModel, sendPrompt,
   setThinking, startReplay, test, waitAssistantDone,
 } from './helpers'
 
@@ -67,17 +67,18 @@ test.describe('A12 context ring', () => {
     await expect(page.locator('[data-testid="context-popover"] li[data-key="attachments"] span.tabular-nums').first()).not.toHaveText('0')
   })
 
-  test.describe('@gemini', () => {
-    test.describe.configure({ retries: 1, timeout: GEMINI_TIMEOUT })
+  test.describe('@live-llm', () => {
+    test.skip(!LIVE_LLM_ENABLED, LIVE_SKIP_MESSAGE)
+    test.describe.configure({ retries: 1, timeout: LIVE_TIMEOUT })
 
-    test('A12 @gemini: usage after a Gemini answer is an estimate', async ({ page, approved }) => {
+    test('A12 @live-llm: usage after a live-model answer is an estimate', async ({ page, approved }) => {
       void approved
       await page.goto('/')
-      await selectModel(page, GEMINI_MODEL)
+      await selectModel(page, LIVE_MODEL)
       await setThinking(page, 'off')
       await sendPrompt(page, 'Say hello in exactly three words.')
-      await expect(lastAssistant(page)).toHaveAttribute('data-status', /complete|error|stopped/, { timeout: GEMINI_TIMEOUT - 30_000 })
-      await expect(lastAssistant(page), 'Gemini run did not complete').toHaveAttribute('data-status', 'complete')
+      await expect(lastAssistant(page)).toHaveAttribute('data-status', /complete|error|stopped/, { timeout: LIVE_TIMEOUT - 30_000 })
+      await expect(lastAssistant(page), 'Live model run did not complete').toHaveAttribute('data-status', 'complete')
       const ctx = await getContext(page, conversationIdFrom(page))
       expect(ctx.last_usage?.source).toBe('estimate')
       expect(ctx.last_usage!.input_tokens).toBeGreaterThan(0)

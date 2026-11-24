@@ -6,7 +6,7 @@ from app.db import get_db
 from app.errors import ApiError
 from app.models import Session, User
 from app.security import client_ip
-from app.services.sessions import COOKIE_NAME, resolve_session, set_session_cookie
+from app.services.sessions import cookie_name, resolve_session, set_session_cookie
 
 __all__ = ["get_db", "current_session", "current_user", "active_user", "admin_user", "client_ip"]
 
@@ -14,7 +14,7 @@ __all__ = ["get_db", "current_session", "current_user", "active_user", "admin_us
 async def current_session(
     request: Request, response: Response, db: AsyncSession = Depends(get_db)
 ) -> tuple[Session, User]:
-    token = request.cookies.get(COOKIE_NAME)
+    token = request.cookies.get(cookie_name())
     resolved = await resolve_session(db, token) if token else None
     if resolved is None:
         raise ApiError(401, "unauthenticated", "Not signed in")

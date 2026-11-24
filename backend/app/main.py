@@ -13,7 +13,7 @@ from app.middleware import BodyLimitMiddleware, OriginCheckMiddleware, SecurityH
 from app.routers import admin, auth, context, conversations, files, messages, models, plugins, skills
 from app.services.model_registry import close_clients, get_registry
 from app.services.runs import registry
-from app.services.startup import check_secrets, mark_interrupted_messages, run_migrations, seed_admin
+from app.services.startup import check_default_credentials, check_secrets, mark_interrupted_messages, run_migrations, seed_admin
 from app.services.storage import ensure_bucket
 from app.spa import mount_spa
 
@@ -23,6 +23,7 @@ log = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    check_default_credentials()
     get_registry()  # fail fast on an invalid models config
     await run_migrations()
     await check_secrets()

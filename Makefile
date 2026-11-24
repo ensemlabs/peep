@@ -1,20 +1,17 @@
-# GEMINI=1 joins the external llm-proxy network (free dev/test provider, see docs/dev/llm-proxy.md).
-GEMINI ?= 0
-COMPOSE_FILES = -f docker-compose.yml
-ifeq ($(GEMINI),1)
-COMPOSE_FILES += -f docker-compose.gemini.yml
-endif
-COMPOSE = docker compose $(COMPOSE_FILES)
-# e2e always runs against the llm-proxy dev provider plus the e2e overrides.
-COMPOSE_E2E = docker compose -f docker-compose.yml -f docker-compose.gemini.yml -f docker-compose.e2e.yml
+# docker-compose.local.yml (git-ignored, optional) is added when present: e.g. to join a local LLM network (docs/development.md).
+LOCAL_OVERLAY := $(wildcard docker-compose.local.yml)
+COMPOSE_LOCAL = $(if $(LOCAL_OVERLAY),-f docker-compose.local.yml)
+COMPOSE = docker compose -f docker-compose.yml $(COMPOSE_LOCAL)
+# e2e = base + e2e overrides + the optional local overlay (last, so it can override).
+COMPOSE_E2E = docker compose -f docker-compose.yml -f docker-compose.e2e.yml $(COMPOSE_LOCAL)
 
 .PHONY: help env up down logs ps build test-be test-fe e2e e2e-down clean
 
 help:            ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-14s %s\n", $$1, $$2}'
 
-env:             ## Create .env and config/models.yaml from the examples (if missing)
-	@test -f .env || cp .env.example .env
+env:             ## Create .env (with generated secrets) and config/models.yaml if missing
+	@sh scripts/gen-env.sh
 	@test -f config/models.yaml || cp config/models.example.yaml config/models.yaml
 
 up: env          ## Start the stack in the background (build if needed)
@@ -38,7 +35,7 @@ test-be: env     ## Run backend tests (real Postgres + MinIO in compose)
 test-fe:         ## Run frontend unit tests + type check/build in a node container
 	docker run --rm -u $$(id -u):$$(id -g) -v "$$PWD/frontend":/app -w /app -e HOME=/tmp node:24.15.0-alpine sh -c "npm ci && npm test && npm run build"
 
-e2e: env         ## Run the Playwright suite against the live stack (ARGS="--grep @gemini" to filter)
+e2e: env         ## Run the Playwright suite against the live stack (ARGS="--grep @live-llm" to filter)
 	$(COMPOSE_E2E) up -d --build
 	@port=$$(grep -E '^WEB_PORT=' .env | cut -d= -f2); port=$${port:-8090}; \
 	for i in $$(seq 1 60); do curl -fs -o /dev/null "http://127.0.0.1:$$port/api/health" && break; sleep 2; done; \

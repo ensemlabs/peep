@@ -416,7 +416,7 @@ async def test_limited_user_has_single_active_run(live_api, settings, monkeypatc
         r = await c.post(f"/api/conversations/{c2}/messages", json={"content": "x", "model": "replay:error-demo"})
         assert r.status_code == second_status, r.text
         if second_status == 409:
-            assert r.json()["error"] == {"code": "run_in_progress", "message": "Another reply is still being generated"}
+            assert r.json()["error"]["code"] == "too_many_runs"
         await resp.aread()
         await cm.__aexit__(None, None, None)
         await registry.wait_idle()
@@ -425,3 +425,58 @@ async def test_limited_user_has_single_active_run(live_api, settings, monkeypatc
         assert r.status_code == 200
         await registry.wait_idle()
         await c.aclose()
+
+
+async def test_every_user_is_capped_on_concurrent_runs(live_api, settings, monkeypatch):
+    monkeypatch.setattr(settings, "replay_time_scale", 0.05)
+    monkeypatch.setattr(settings, "max_runs_per_user", 2)
+    await create_user("free@example.com")
+    c = await live_login(live_api, "free@example.com")
+    cids = [await new_conversation(c) for _ in range(3)]
+    streams = [await start_stream(c, cid) for cid in cids[:2]]
+    r = await c.post(f"/api/conversations/{cids[2]}/messages", json={"content": "x", "model": "replay:error-demo"})
+    assert r.status_code == 409 and r.json()["error"]["code"] == "too_many_runs"
+    for cm, resp in streams:
+        await resp.aread()
+        await cm.__aexit__(None, None, None)
+    await registry.wait_idle()
+    r = await c.post(f"/api/conversations/{cids[2]}/messages", json={"content": "y", "model": "replay:error-demo"})
+    assert r.status_code == 200
+    await registry.wait_idle()
+    await c.aclose()
+
+
+async def test_double_stop_during_finish_releases_everything(live_api, settings, monkeypatch):
+    from app.services.runs import RunState
+
+    monkeypatch.setattr(settings, "replay_time_scale", 0.05)
+    orig_finish = RunState.finish
+
+    async def slow_finish(self, status, error):
+        await asyncio.sleep(0.4)  # a window in which a second Stop arrives
+        await orig_finish(self, status, error)
+
+    monkeypatch.setattr(RunState, "finish", slow_finish)
+    await create_user("a@example.com")
+    c = await live_login(live_api, "a@example.com")
+    cid = await new_conversation(c)
+    cm, resp = await start_stream(c, cid)
+    it = sse_iter(resp)
+    await anext(it)
+    await anext(it)
+    (state,) = list(registry._runs.values())
+    assert await registry.stop(state.message_id)
+    await asyncio.sleep(0.1)
+    assert state.finalizing
+    assert await registry.stop(state.message_id)  # second click: must be a no-op
+    await registry.wait_idle()
+    async for _ in it:
+        pass
+    await cm.__aexit__(None, None, None)
+    assert not registry.is_busy(uuid.UUID(cid)) and not registry._owners and not registry._runs
+    assert (await conversation_messages(c, cid))[1]["status"] == "stopped"
+    monkeypatch.setattr(RunState, "finish", orig_finish)
+    r = await c.post(f"/api/conversations/{cid}/messages", json={"content": "again", "model": "replay:error-demo"})
+    assert r.status_code == 200
+    await registry.wait_idle()
+    await c.aclose()

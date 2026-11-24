@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev, "dev/**"]
   pull_request:
 
 permissions:
@@ -18,9 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v5
-      # `make test-be` runs `make env` first, which copies the example env file. The example values are enough
-      # for the tests (they generate their own Fernet key), so no secret is needed.
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      # `make test-be` runs `make env` first, which generates a throwaway .env with random secrets (nothing is
+      # stored in the repo or in GitHub secrets). The tests generate their own Fernet key.
       - name: Run backend tests (Postgres + MinIO via compose)
         run: make test-be
       - name: Show service logs on failure
@@ -35,6 +35,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - name: Run frontend tests and build
         run: make test-fe

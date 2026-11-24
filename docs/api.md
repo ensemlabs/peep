@@ -7,7 +7,7 @@ on the same origin as the web app (`/api/...`). There is no `/docs` or `/openapi
 
 - JSON bodies, UTF-8. Unknown fields in request bodies are ignored.
 - Timestamps are ISO 8601 UTC with a `Z` suffix. Ids are UUIDs, except part ids (12 hex characters).
-- Authentication: the cookie `ec_session` (set by register and login). Requests without a valid one get 401.
+- Authentication: the cookie `ec_session`, or `__Host-ec_session` when `COOKIE_SECURE` is on (set by register and login). Requests without a valid one get 401.
 - State-changing requests (any method except GET, HEAD, OPTIONS) to `/api/*` need an `Origin` header (or
   `Referer` when `Origin` is missing) that matches `APP_ORIGINS`, otherwise 403 `bad_origin`. `/api/health` is exempt.
 - Errors always have this shape:
@@ -226,7 +226,7 @@ Body `{current_password, new_password}`. Revokes all other sessions of the user;
 ### Cookie
 
 `ec_session=<token>; HttpOnly; SameSite=Lax; Path=/; Max-Age=<SESSION_IDLE_DAYS in seconds>`, plus `Secure` when
-`COOKIE_SECURE=true`. The token is 32 random bytes (URL-safe); the database stores only its SHA-256. A session ends
+`COOKIE_SECURE` is on (`true`, or `auto` with all `APP_ORIGINS` https), in which case the name is `__Host-ec_session`. The token is 32 random bytes (URL-safe); the database stores only its SHA-256. A session ends
 after `SESSION_IDLE_DAYS` without use, or `SESSION_ABSOLUTE_DAYS` after login. The idle timer is extended (and the
 cookie re-sent) at most once per `SESSION_REFRESH_SECONDS`.
 
@@ -444,8 +444,8 @@ Token limit: after the conversation, empty message, model and `reasoning` checks
 before `run_in_progress` and the attachment checks), the server sums the user's tokens in the current
 window (see [Token usage](#token-usage)). If `token_limit` is set and the sum is at least the limit, it answers 429
 `quota_exceeded` and stores nothing. The check is soft: a reply that has started is never cut off. A user with a
-`token_limit` can have only one running reply across all conversations; a second send answers 409 `run_in_progress`
-("Another reply is still being generated").
+`token_limit` can have only one running reply across all conversations; other users up to `MAX_RUNS_PER_USER` (3).
+Beyond that a send answers 409 `too_many_runs` ("Too many replies are running; wait for one to finish").
 
 Effects: stores the user message and an empty assistant message (`status: streaming`), attaches the files, sets the
 conversation title (first 60 characters of the text with whitespace collapsed, or the first attachment's file name)
@@ -457,7 +457,8 @@ if it has none, stores the model on the conversation, and starts the run. The re
 | 200 | | SSE stream |
 | 404 | `not_found` | Not your conversation |
 | 409 | `file_in_use` | The file is attached to a message (or generated) and cannot be deleted |
-| 409 | `run_in_progress` | This conversation already has a running reply, or a user with a `token_limit` has one running elsewhere |
+| 409 | `run_in_progress` | This conversation already has a running reply |
+| 409 | `too_many_runs` | The user is at the cap of running replies elsewhere (1 with a `token_limit`, else `MAX_RUNS_PER_USER`) |
 | 429 | `quota_exceeded` | The user has a `token_limit` and the tokens used in the current window have reached it |
 | 422 | `empty_message` | No text (after trimming) and no attachment |
 | 422 | `invalid_model` | Unknown model (only with `dev.model_switcher`) |
@@ -681,7 +682,7 @@ Object keys in S3: `u/<user id>/<file id>/<file name>` and `thumbs/<file id>.web
 
 Query: `download=1` forces a download. Request headers: `Range`, `If-None-Match`.
 
-Response headers: `Content-Type`, `Accept-Ranges: bytes`, `ETag: "<sha256>"`, `Cache-Control: private, max-age=3600`,
+Response headers: `Content-Type` (the verified media type for images, video and audio; `application/octet-stream` for every other file, whatever type was sent on upload, which stays in the metadata), `Accept-Ranges: bytes`, `ETag: "<sha256>"`, `Cache-Control: private, max-age=3600`,
 `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'none'; sandbox`, `Content-Disposition`,
 and for partial responses `Content-Range`.
 

@@ -1,3 +1,5 @@
+import pytest
+
 from datetime import UTC, datetime, timedelta
 
 from tests.conftest import PASSWORD, create_user, login, new_email, register, sql
@@ -170,3 +172,54 @@ async def test_password_change_revokes_other_sessions(make_client):
     assert (await c2.get("/api/auth/me")).status_code == 401
     assert (await login(make_client(), "a@example.com", PASSWORD)).status_code == 401
     assert (await login(make_client(), "a@example.com", new)).status_code == 200
+
+
+def test_cookie_secure_auto_follows_origins(settings, monkeypatch):
+    monkeypatch.setattr(settings, "cookie_secure", "auto")
+    monkeypatch.setattr(settings, "app_origins", "https://peep.example.com")
+    assert settings.cookie_secure_on is True
+    monkeypatch.setattr(settings, "app_origins", "https://peep.example.com,http://localhost:8090")
+    assert settings.cookie_secure_on is False
+    monkeypatch.setattr(settings, "cookie_secure", "true")
+    assert settings.cookie_secure_on is True
+    monkeypatch.setattr(settings, "app_origins", "https://peep.example.com")
+    monkeypatch.setattr(settings, "cookie_secure", "false")
+    assert settings.cookie_secure_on is False
+
+
+async def test_secure_cookie_uses_host_prefix(make_client, settings, monkeypatch):
+    monkeypatch.setattr(settings, "cookie_secure", "auto")
+    monkeypatch.setattr(settings, "app_origins", "https://peep.example.com")
+    c = make_client(origin="https://peep.example.com")
+    r = await register(c, "secure@example.com")
+    assert r.status_code == 201
+    cookie = r.headers["set-cookie"]
+    assert cookie.startswith("__Host-ec_session=") and "Secure" in cookie and "Path=/" in cookie
+    assert "domain" not in cookie.lower()
+    token = cookie.split(";")[0].split("=", 1)[1]
+    # the Secure cookie is not replayed over the plain-http test transport, so send it by hand
+    c.cookies.clear()
+    me = await c.get("/api/auth/me", headers={"Cookie": f"__Host-ec_session={token}"})
+    assert me.status_code == 200
+    # the plain name is ignored while Secure is on
+    old = await c.get("/api/auth/me", headers={"Cookie": f"ec_session={token}"})
+    assert old.status_code == 401
+    out = await c.post("/api/auth/logout", headers={"Cookie": f"__Host-ec_session={token}"})
+    assert out.headers["set-cookie"].startswith("__Host-ec_session=")
+
+
+def test_settings_validation(monkeypatch):
+    from pydantic import ValidationError
+
+    from app.config import Settings
+
+    base = {"database_url": "postgresql+asyncpg://u:p@h/d"}
+    assert Settings(**base).max_runs_per_user == 3
+    for spelling, on in (("true", True), ("1", True), ("YES", True), ("off", False), ("0", False), ("false", False)):
+        assert Settings(**base, cookie_secure=spelling).cookie_secure_on is on
+    for bad in ("maybe", ""):
+        with pytest.raises(ValidationError):
+            Settings(**base, cookie_secure=bad)
+    for bad in (0, -1):
+        with pytest.raises(ValidationError):
+            Settings(**base, max_runs_per_user=bad)

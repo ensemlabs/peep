@@ -25,7 +25,13 @@ from app.security import (
 )
 from app.services import throttle
 from app.services.quota import period_bounds, used_tokens
-from app.services.sessions import COOKIE_NAME, clear_session_cookie, create_session, revoke_user_sessions, set_session_cookie
+from app.services.sessions import (
+    clear_session_cookie,
+    cookie_name,
+    create_session,
+    revoke_user_sessions,
+    set_session_cookie,
+)
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -113,7 +119,7 @@ async def login(body: LoginBody, request: Request, response: Response, db: Async
 
 @router.post("/logout", status_code=204)
 async def logout(request: Request, db: AsyncSession = Depends(get_db)) -> Response:
-    token = request.cookies.get(COOKIE_NAME)
+    token = request.cookies.get(cookie_name())
     if token:
         await db.execute(delete(Session).where(Session.token_hash == token_digest(token)))
         await db.commit()
