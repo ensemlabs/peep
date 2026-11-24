@@ -5,6 +5,7 @@ import type { FileMeta, Message, StreamEvent } from '@/api/types'
 import { applyEvent } from './applyEvent'
 import { whenVisible } from '@/lib/visibility'
 import { useRunStore } from './stores'
+import { ME_KEY } from '@/features/auth/useMe'
 
 export const convKey = (id: string) => ['conversation', id] as const
 export const CONVERSATIONS_KEY = ['conversations'] as const
@@ -96,6 +97,7 @@ async function drive(
   // One refresh of the list and of the context per run.
   qc.invalidateQueries({ queryKey: CONVERSATIONS_KEY })
   qc.invalidateQueries({ queryKey: CONTEXT_KEY })
+  qc.invalidateQueries({ queryKey: ME_KEY }) // token usage (also after a quota_exceeded rejection)
   // The user is looking at this conversation: it is read as soon as the run ends (and the tab is visible).
   if (typeof window !== 'undefined' && window.location.pathname === `/c/${conversationId}`) {
     markReadWhenVisible(qc, conversationId, readKeyFor(conversationId, fresh?.messages))

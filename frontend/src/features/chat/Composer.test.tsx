@@ -77,4 +77,17 @@ describe('Composer', () => {
     expect(onStop).toHaveBeenCalled()
     expect(screen.queryByTestId('send-button')).toBeNull()
   })
+  it('shows the quota banner and blocks sending when the limit is reached', async () => {
+    const quota = { limit: 100, period: 'day' as const, used: 100, resets_at: '2099-11-25T00:00:00Z' }
+    const { onSend, input } = setup({ quota })
+    expect(screen.getByTestId('quota-banner')).toHaveTextContent('reached your token limit')
+    await userEvent.type(input, 'hi')
+    expect(screen.getByTestId('send-button')).toBeDisabled()
+    await userEvent.type(input, '{Enter}')
+    expect(onSend).not.toHaveBeenCalled()
+  })
+  it('has no banner under the limit or without one', () => {
+    setup({ quota: { limit: 100, period: 'day', used: 99, resets_at: '2099-11-25T00:00:00Z' } })
+    expect(screen.queryByTestId('quota-banner')).toBeNull()
+  })
 })

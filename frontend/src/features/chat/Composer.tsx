@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode, type Ref } from 'react'
 import { ArrowUp, FileText, Film, Music, Plus, Square, X, AlertCircle } from 'lucide-react'
 import { api, uploadFile as defaultUpload } from '@/api/client'
-import type { FileMeta } from '@/api/types'
+import type { FileMeta, Quota } from '@/api/types'
 import { useI18n } from '@/i18n'
 import { formatBytes } from '@/lib/format'
 import { cn } from '@/lib/cn'
+import { formatReset, isOverQuota } from '@/lib/quota'
 import { Spinner } from '@/components/ui/Spinner'
 
 type Upload = (file: File, onProgress: (f: number) => void, signal?: AbortSignal, opts?: { conversationId?: string }) => Promise<FileMeta>
@@ -30,6 +31,8 @@ interface Props {
   conversationId?: string
   /** Deletes an uploaded, not-yet-sent file on the server (404/409 are ignored). */
   removeFile?: (id: string) => Promise<unknown>
+  /** Token quota from /me; at or over the limit the composer shows a notice and cannot send. */
+  quota?: Quota
   autoFocus?: boolean
   initialText?: string
   /** Slot next to Send (the context ring); receives the live draft. */
@@ -49,8 +52,8 @@ export interface ComposerHandle {
 let seq = 0
 const defaultRemove = (id: string) => api.deleteFile(id).catch(() => {})
 
-export function Composer({ streaming, disabled, onSend, onStop, upload = defaultUpload, conversationId, removeFile = defaultRemove, autoFocus, initialText = '', renderRing, toolbar, onAttachmentsChange, ref }: Props) {
-  const { t, err } = useI18n()
+export function Composer({ streaming, disabled, onSend, onStop, upload = defaultUpload, conversationId, removeFile = defaultRemove, quota, autoFocus, initialText = '', renderRing, toolbar, onAttachmentsChange, ref }: Props) {
+  const { t, err, lang } = useI18n()
   const [text, setText] = useState(initialText)
   const [items, setItems] = useState<Attachment[]>([])
   const [dragging, setDragging] = useState(false)
@@ -176,7 +179,8 @@ export function Composer({ streaming, disabled, onSend, onStop, upload = default
     }
     onChangeRef.current?.(readyCount)
   }, [readyCount])
-  const canSend = !disabled && !uploading && (text.trim().length > 0 || ready.length > 0)
+  const overQuota = isOverQuota(quota)
+  const canSend = !disabled && !overQuota && !uploading && (text.trim().length > 0 || ready.length > 0)
 
   function submit() {
     if (!canSend || streaming) return
@@ -218,6 +222,11 @@ export function Composer({ streaming, disabled, onSend, onStop, upload = default
         >
           <div className="rounded-2xl border-2 border-dashed border-fg/40 px-8 py-6 text-lg font-medium">{t('chat.dropHere')}</div>
         </div>
+      )}
+      {overQuota && quota && (
+        <p role="status" data-testid="quota-banner" className="mb-2 rounded-xl border border-danger/40 bg-surface px-4 py-2 text-sm text-danger">
+          {t('quota.reached', { time: formatReset(quota.resets_at, quota.period, lang) })}
+        </p>
       )}
       <div className="rounded-[28px] border border-line/70 bg-surface-2 shadow-[0_2px_16px_-6px_rgb(0_0_0/0.16)] transition-shadow focus-within:shadow-[0_4px_22px_-6px_rgb(0_0_0/0.22)]">
         {items.length > 0 && (

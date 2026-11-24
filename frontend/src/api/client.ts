@@ -1,7 +1,7 @@
 import { detectLang } from '@/lib/lang'
 import type {
-  ContextInfo, Conversation, FileMeta, Message, ModelsResponse, Plugin, PluginInput, Role, Skill, SkillDetail,
-  User, UserStatus,
+  AdminUser, AuditAction, AuditItem, BulkAction, BulkResult, Me, ContextInfo, Conversation, FileMeta, Message, ModelsResponse, Plugin, PluginInput, Role, Skill, SkillDetail,
+  TokenPeriod, User, UserStatus,
 } from './types'
 
 /** Headers sent on every API call: the backend localises model labels by Accept-Language. */
@@ -76,7 +76,7 @@ const del = <T,>(p: string) => request<T>('DELETE', p)
 const postForm = <T,>(p: string, f: FormData) => request<T>('POST', p, undefined, f)
 
 export const api = {
-  me: () => get<{ user: User }>('/api/auth/me').then((r) => r.user),
+  me: () => get<{ user: User; quota?: Me['quota'] }>('/api/auth/me').then((r): Me => ({ ...r.user, quota: r.quota })),
   login: (email: string, password: string) =>
     post<{ user: User }>('/api/auth/login', { email, password }).then((r) => r.user),
   register: (email: string, password: string, display_name: string) =>
@@ -91,9 +91,20 @@ export const api = {
     if (p.status) qs.set('status', p.status)
     qs.set('limit', String(p.limit ?? 100))
     qs.set('offset', String(p.offset ?? 0))
-    return get<{ items: User[]; total: number }>(`/api/admin/users?${qs}`)
+    return get<{ items: AdminUser[]; total: number }>(`/api/admin/users?${qs}`)
   },
-  adminPatchUser: (id: string, body: { status?: UserStatus; role?: Role }) =>
+  adminCreateUser: (body: { email: string; display_name: string; password: string; role: Role; status: 'active' | 'pending' }) =>
+    post<{ user: User }>('/api/admin/users', body).then((r) => r.user),
+  adminBulk: (ids: string[], action: BulkAction) => post<BulkResult>('/api/admin/users/bulk', { ids, action }),
+  adminAudit: (p: { q?: string; action?: AuditAction | ''; limit?: number; offset?: number }) => {
+    const qs = new URLSearchParams()
+    if (p.q) qs.set('q', p.q)
+    if (p.action) qs.set('action', p.action)
+    qs.set('limit', String(p.limit ?? 50))
+    qs.set('offset', String(p.offset ?? 0))
+    return get<{ items: AuditItem[]; total: number }>(`/api/admin/audit?${qs}`)
+  },
+  adminPatchUser: (id: string, body: { status?: UserStatus; role?: Role; token_limit?: number | null; token_period?: TokenPeriod }) =>
     patch<{ user: User }>(`/api/admin/users/${id}`, body).then((r) => r.user),
   adminResetPassword: (id: string, new_password: string) =>
     post<void>(`/api/admin/users/${id}/password`, { new_password }),

@@ -18,7 +18,7 @@ vi.mock('@/api/client', async (orig) => ({
 }))
 import { Sidebar } from './Sidebar'
 
-const user: User = { id: 'u', email: 'a@b.c', display_name: 'Ann', role: 'user', status: 'active', created_at: '', last_login_at: null, approved_at: null }
+const user: User = { id: 'u', email: 'a@b.c', display_name: 'Ann', role: 'user', status: 'active', created_at: '', last_login_at: null, approved_at: null, token_limit: null, token_period: 'month' }
 
 describe('indicatorFor', () => {
   it.each([

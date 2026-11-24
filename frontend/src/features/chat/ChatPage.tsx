@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useOutletContext, useParams } from 'react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError } from '@/api/client'
-import type { FileMeta, Message, User } from '@/api/types'
+import type { FileMeta, Me, Message } from '@/api/types'
 import { useI18n } from '@/i18n'
 import { Composer, type ComposerHandle } from './Composer'
 import { EmptyState } from './EmptyState'
@@ -29,7 +29,7 @@ function ChatPage({ id }: { id?: string }) {
   const { t, err } = useI18n()
   const navigate = useNavigate()
   const qc = useQueryClient()
-  const user = useOutletContext<User>()
+  const user = useOutletContext<Me>()
   const active = user.status === 'active'
   const [sendError, setSendError] = useState<string | null>(null)
   const [draftKey, setDraftKey] = useState(0)
@@ -195,6 +195,7 @@ function ChatPage({ id }: { id?: string }) {
             key={draftKey}
             initialText={seed}
             conversationId={id}
+            quota={user.quota}
             streaming={streaming}
             disabled={!current}
             toolbar={

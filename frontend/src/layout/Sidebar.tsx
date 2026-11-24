@@ -4,7 +4,7 @@ import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-quer
 import { DropdownMenu, Tooltip } from 'radix-ui'
 import { Check, ChevronsUpDown, LogOut, MoreHorizontal, PanelLeftClose, Pin, Plus, Puzzle, Search, Settings, Shield, X } from 'lucide-react'
 import { api } from '@/api/client'
-import type { Conversation, User } from '@/api/types'
+import type { Conversation, Me, Quota } from '@/api/types'
 import { useI18n, type Lang } from '@/i18n'
 import { cn } from '@/lib/cn'
 import { EnsembleLogo } from '@/components/EnsembleLogo'
@@ -15,6 +15,9 @@ import { CONVERSATIONS_KEY } from '@/features/chat/runner'
 import { useRunStore, useUiStore } from '@/features/chat/stores'
 import { ModelPicker } from '@/features/chat/ModelPicker'
 import { useMediaQuery } from '@/lib/useMediaQuery'
+import { formatTokens } from '@/lib/format'
+import { formatReset } from '@/lib/quota'
+import { UsageBar } from '@/components/ui/UsageBar'
 import { effectiveStatus, groupConversations, indicatorFor, unreadCount, type Indicator } from './conversationStatus'
 
 export { groupConversations } from './conversationStatus'
@@ -30,7 +33,7 @@ function useDebounced<T>(value: T, ms: number): T {
   return v
 }
 
-export function Sidebar({ user }: { user: User }) {
+export function Sidebar({ user }: { user: Me }) {
   const { t } = useI18n()
   const navigate = useNavigate()
   const location = useLocation()
@@ -392,7 +395,7 @@ const ConversationRow = memo(function ConversationRow({ conv }: { conv: Conversa
   )
 })
 
-function UserMenu({ user }: { user: User }) {
+function UserMenu({ user }: { user: Me }) {
   const { t, lang, setLang } = useI18n()
   const navigate = useNavigate()
   const logout = useLogout()
@@ -411,6 +414,7 @@ function UserMenu({ user }: { user: User }) {
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
           <DropdownMenu.Content side="top" align="start" sideOffset={6} className="z-50 w-64 max-w-[calc(100vw-1rem)] rounded-xl border border-line bg-bg p-1 shadow-lg">
+            {user.quota?.limit != null && <QuotaUsage quota={user.quota} limit={user.quota.limit} />}
             <DropdownMenu.Label className="px-2.5 py-1 text-xs font-medium text-muted">{t('common.language')}</DropdownMenu.Label>
             <DropdownMenu.RadioGroup value={lang} onValueChange={(v) => setLang(v as Lang)}>
               {(['en', 'vi'] as Lang[]).map((l) => (
@@ -443,6 +447,18 @@ function UserMenu({ user }: { user: User }) {
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
+    </div>
+  )
+}
+
+function QuotaUsage({ quota, limit }: { quota: Quota; limit: number }) {
+  const { t, lang } = useI18n()
+  const key = quota.period === 'day' ? 'quota.usedDay' : 'quota.usedMonth'
+  return (
+    <div data-testid="quota-usage" className="mb-1 border-b border-line px-2.5 pb-2 pt-1.5">
+      <div className="text-xs">{t(key, { used: formatTokens(quota.used), limit: formatTokens(limit) })}</div>
+      <UsageBar used={quota.used} limit={limit} label={t('quota.usage')} className="my-1.5" />
+      <div className="text-[11px] text-muted">{t('quota.resets', { time: formatReset(quota.resets_at, quota.period, lang) })}</div>
     </div>
   )
 }

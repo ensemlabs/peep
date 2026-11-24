@@ -10,6 +10,41 @@ export interface User {
   created_at: string
   last_login_at: string | null
   approved_at: string | null
+  token_limit: number | null
+  token_period: TokenPeriod
+}
+
+export type TokenPeriod = 'day' | 'month'
+
+export interface Quota {
+  limit: number | null
+  period: TokenPeriod
+  used: number
+  resets_at: string
+}
+
+/** The signed-in user; `quota` comes from /me only (absent right after login/register). */
+export type Me = User & { quota?: Quota }
+
+export type AdminUser = User & { tokens_used: number }
+
+export type BulkAction = 'approve' | 'disable' | 'enable' | 'delete'
+export interface BulkResult {
+  done: string[]
+  skipped: { id: string; reason: 'self' | 'not_found' | 'no_change' }[]
+}
+
+export type AuditAction =
+  | 'user.create' | 'user.status' | 'user.role' | 'user.password_reset' | 'user.delete' | 'user.quota'
+export interface AuditItem {
+  id: string
+  actor_id: string | null
+  actor_email: string
+  target_id: string | null
+  target_email: string | null
+  action: AuditAction
+  detail: Record<string, unknown>
+  created_at: string
 }
 
 export type FileKind = 'image' | 'video' | 'audio' | 'file'
