@@ -14,11 +14,29 @@
 
 <p align="center"><sub><i>Một lượt chạy agent trực tiếp: suy nghĩ, kế hoạch, công cụ, sub-agent và ảnh được tạo ra. Ảnh demo do Gemini tạo.</i></sub></p>
 
-## Xem video giới thiệu 45 giây
+## Xem Peep hoạt động
 
-<p align="center"><a href="docs/media/peep-promo.mp4"><img src="docs/images/promo-poster.jpg" alt="Phát video giới thiệu Peep (45 giây)" width="100%"></a></p>
+<table>
+<tr>
+<td width="50%" valign="top"><img src="docs/media/clips/peep-hello.webp" alt="Peep vẫy chào khi mở chat mới" width="100%"><br><b>Peep chào bạn</b><br><sub>Mở chat mới là Peep ra chào, rồi ở lại bầu bạn.</sub></td>
+<td width="50%" valign="top"><img src="docs/media/clips/thinking-live.webp" alt="Phần suy nghĩ chạy trực tiếp rồi thu gọn thành Thought for 4s" width="100%"><br><b>Suy nghĩ trực tiếp</b><br><sub>Thấy agent suy nghĩ ngay lúc đó, xong tự thu gọn.</sub></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><img src="docs/media/clips/tools-gallery.webp" alt="Các dòng tool và sub-agent, rồi năm ảnh được tạo hiện vào gallery" width="100%"><br><b>Tool, sub-agent, hình ảnh</b><br><sub>Từng bước agent làm, rồi tới kết quả.</sub></td>
+<td width="50%" valign="top"><img src="docs/media/clips/lightbox-clip.webp" alt="Phóng to ảnh trong lightbox, rồi một clip ngắn được phát" width="100%"><br><b>Lightbox và video</b><br><sub>Phóng to, phát, tua, tải xuống.</sub></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><img src="docs/media/clips/context-ring.webp" alt="Vòng context với bảng phân tích token" width="100%"><br><b>Vòng context</b><br><sub>Biết context đang chứa những gì.</sub></td>
+<td width="50%" valign="top"><img src="docs/media/clips/sidebar-dark.webp" alt="Chấm trạng thái ở sidebar, rồi chuyển sang giao diện tối" width="100%"><br><b>Trạng thái chat, sáng hay tối</b><br><sub>Chat đang chạy, chưa đọc, bị lỗi; một chạm là sang dark mode.</sub></td>
+</tr>
+<tr>
+<td align="center" valign="top"><img src="docs/media/clips/mobile-chat.webp" alt="Điện thoại: Peep chào, gửi câu hỏi và phần suy nghĩ chạy trực tiếp" width="300"><br><b>Trên điện thoại</b><br><sub>Trải nghiệm y như trên máy tính.</sub></td>
+<td align="center" valign="top"><img src="docs/media/clips/mobile-gallery.webp" alt="Điện thoại: gallery, vuốt ảnh toàn màn hình, rồi drawer với chấm trạng thái" width="300"><br><b>Gallery và drawer trên mobile</b><br><sub>Chạm, vuốt, đổi cuộc chat.</sub></td>
+</tr>
+</table>
 
-<p align="center"><sub>Bấm để xem hoặc tải <a href="docs/media/peep-promo.mp4"><code>docs/media/peep-promo.mp4</code></a> (1080p, 60 fps, 45 giây).
+<p align="center"><a href="docs/media/peep-promo.mp4"><img src="docs/images/promo-poster.jpg" alt="Phát video giới thiệu đầy đủ của Peep (45 giây)" width="420"></a><br>
+<sub>Video đầy đủ 45 giây có nhạc: <a href="docs/media/peep-promo.mp4"><code>docs/media/peep-promo.mp4</code></a> (1080p, 60 fps).
 Nhạc: "Newer Wave" của Kevin MacLeod (<a href="https://incompetech.com">incompetech.com</a>), giấy phép
 <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Hiệu ứng âm thanh: "Pop, High, A (H1).wav" của InspectorJ
 (<a href="https://freesound.org">freesound.org</a>), CC BY 4.0.</sub></p>

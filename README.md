@@ -14,11 +14,29 @@
 
 <p align="center"><sub><i>One agent run, live: thinking, a plan, tools, a sub-agent and generated images. Demo media were made with Gemini.</i></sub></p>
 
-## Watch the 45-second tour
+## See it in action
 
-<p align="center"><a href="docs/media/peep-promo.mp4"><img src="docs/images/promo-poster.jpg" alt="Play the Peep promo video (45 seconds)" width="100%"></a></p>
+<table>
+<tr>
+<td width="50%" valign="top"><img src="docs/media/clips/peep-hello.webp" alt="Peep waves hello on a new chat" width="100%"><br><b>Peep says hello</b><br><sub>A new chat greets you, then Peep keeps you company.</sub></td>
+<td width="50%" valign="top"><img src="docs/media/clips/thinking-live.webp" alt="Thinking streams live and folds into Thought for 4s" width="100%"><br><b>Live thinking</b><br><sub>Reasoning streams in, then folds away.</sub></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><img src="docs/media/clips/tools-gallery.webp" alt="Tool and sub-agent rows, then five generated images load into the gallery" width="100%"><br><b>Tools, sub-agents, images</b><br><sub>Every step of the run, then the results.</sub></td>
+<td width="50%" valign="top"><img src="docs/media/clips/lightbox-clip.webp" alt="Lightbox zoom on an image, then a short clip plays" width="100%"><br><b>Lightbox and video</b><br><sub>Zoom in, play, scrub, download.</sub></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><img src="docs/media/clips/context-ring.webp" alt="Context ring popover with the token breakdown" width="100%"><br><b>Context ring</b><br><sub>See what fills the context window.</sub></td>
+<td width="50%" valign="top"><img src="docs/media/clips/sidebar-dark.webp" alt="Sidebar status dots, then the theme switches to dark" width="100%"><br><b>Status at a glance, light or dark</b><br><sub>Running, unread and failed chats; one click to dark.</sub></td>
+</tr>
+<tr>
+<td align="center" valign="top"><img src="docs/media/clips/mobile-chat.webp" alt="Phone: Peep greets, a prompt is sent and thinking streams" width="300"><br><b>On your phone</b><br><sub>Same experience on mobile.</sub></td>
+<td align="center" valign="top"><img src="docs/media/clips/mobile-gallery.webp" alt="Phone: gallery, full-screen lightbox swipe, then the drawer with status dots" width="300"><br><b>Gallery and drawer on mobile</b><br><sub>Tap, swipe, and switch chats.</sub></td>
+</tr>
+</table>
 
-<p align="center"><sub>Click to play or download <a href="docs/media/peep-promo.mp4"><code>docs/media/peep-promo.mp4</code></a> (1080p, 60 fps, 45 s).
+<p align="center"><a href="docs/media/peep-promo.mp4"><img src="docs/images/promo-poster.jpg" alt="Play the full Peep promo video (45 seconds)" width="420"></a><br>
+<sub>Full 45-second video with sound: <a href="docs/media/peep-promo.mp4"><code>docs/media/peep-promo.mp4</code></a> (1080p, 60 fps).
 Music: "Newer Wave" by Kevin MacLeod (<a href="https://incompetech.com">incompetech.com</a>), licensed under
 <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Sound effect: "Pop, High, A (H1).wav" by InspectorJ
 (<a href="https://freesound.org">freesound.org</a>), CC BY 4.0.</sub></p>
