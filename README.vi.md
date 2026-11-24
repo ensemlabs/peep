@@ -35,12 +35,6 @@
 </tr>
 </table>
 
-<p align="center"><a href="docs/media/peep-promo.mp4"><img src="docs/images/promo-poster.jpg" alt="Phát video giới thiệu đầy đủ của Peep (45 giây)" width="420"></a><br>
-<sub>Video đầy đủ 45 giây có nhạc: <a href="docs/media/peep-promo.mp4"><code>docs/media/peep-promo.mp4</code></a> (1080p, 60 fps).
-Nhạc: "Newer Wave" của Kevin MacLeod (<a href="https://incompetech.com">incompetech.com</a>), giấy phép
-<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Hiệu ứng âm thanh: "Pop, High, A (H1).wav" của InspectorJ
-(<a href="https://freesound.org">freesound.org</a>), CC BY 4.0.</sub></p>
-
 ## Peep là gì
 
 Peep là ứng dụng chat tự host, cho bạn thấy toàn bộ quá trình agent làm việc chứ không chỉ câu trả lời cuối: phần suy

@@ -35,12 +35,6 @@
 </tr>
 </table>
 
-<p align="center"><a href="docs/media/peep-promo.mp4"><img src="docs/images/promo-poster.jpg" alt="Play the full Peep promo video (45 seconds)" width="420"></a><br>
-<sub>Full 45-second video with sound: <a href="docs/media/peep-promo.mp4"><code>docs/media/peep-promo.mp4</code></a> (1080p, 60 fps).
-Music: "Newer Wave" by Kevin MacLeod (<a href="https://incompetech.com">incompetech.com</a>), licensed under
-<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Sound effect: "Pop, High, A (H1).wav" by InspectorJ
-(<a href="https://freesound.org">freesound.org</a>), CC BY 4.0.</sub></p>
-
 ## What is Peep
 
 Peep is a self-hosted chat web app that shows the whole run of an AI agent, not only its final answer: thinking, tool
