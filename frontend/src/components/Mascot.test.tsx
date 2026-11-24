@@ -28,15 +28,15 @@ describe('Mascot (Peep)', () => {
 
 describe('Peep on the empty state', () => {
   it('plays the greeting when the empty state mounts, as a large Peep', () => {
-    renderWithI18n(<EmptyState onExample={() => {}} name="Ann" />)
+    renderWithI18n(<EmptyState name="Ann" />)
     const peep = screen.getByTestId('mascot')
     expect(peep).toHaveClass('mascot--greet')
     expect(peep).toHaveAttribute('width', '88')
   })
   it('keeps the same greet element across re-renders (the CSS moves on to idle by itself)', () => {
-    const { rerender } = renderWithI18n(<EmptyState onExample={() => {}} name="Ann" />)
+    const { rerender } = renderWithI18n(<EmptyState name="Ann" />)
     const first = screen.getByTestId('mascot')
-    rerender(<EmptyState onExample={() => {}} name="Ann" hour={3} />)
+    rerender(<EmptyState name="Ann" hour={3} />)
     expect(screen.getByTestId('mascot')).toBe(first)
     expect(first).toHaveClass('mascot--greet')
   })

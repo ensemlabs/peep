@@ -4,7 +4,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError } from '@/api/client'
 import type { FileMeta, Message, User } from '@/api/types'
 import { useI18n } from '@/i18n'
-import { Composer } from './Composer'
+import { Composer, type ComposerHandle } from './Composer'
+import { EmptyState } from './EmptyState'
+import { Suggestions, type SuggestionId } from './Suggestions'
+import { flipHandoff, useFlip } from '@/lib/useFlip'
+import { cn } from '@/lib/cn'
 import { ReasoningLevel } from './ReasoningLevel'
 import { ModelPicker } from './ModelPicker'
 import { useEscapeToStop } from './escape'
@@ -118,6 +122,8 @@ function ChatPage({ id }: { id?: string }) {
   }, [qc])
 
   const desktop = useMediaQuery('(min-width: 768px)')
+  const composerRef = useRef<ComposerHandle>(null)
+  const composerWrap = useRef<HTMLDivElement>(null)
   const streaming = !!run || messages.some((m) => m.role === 'assistant' && m.status === 'streaming')
   useEscapeToStop(streaming, onStop)
 
@@ -133,6 +139,9 @@ function ChatPage({ id }: { id?: string }) {
     try {
       let convId = id
       if (!convId) {
+        // The page remounts on /c/:id: hand the composer's position over so it still glides down.
+        flipHandoff.top = composerWrap.current?.getBoundingClientRect().top ?? null
+        flipHandoff.at = Date.now()
         const created = await api.createConversation(switchable ? { model: current.id } : {})
         convId = created.id
         // Seed the cache so the header shows the title and menu during the very first reply.
@@ -149,47 +158,60 @@ function ChatPage({ id }: { id?: string }) {
   }
 
   const loadFailed = conv.isError
+  const loadingConv = !!id && conv.isLoading && !run
+  // An empty chat: greeting, suggestions and the composer are laid out as one centred group on desktop.
+  const isEmpty = messages.length === 0 && !loadingConv && !loadFailed
+  useFlip(composerWrap, isEmpty)
+
+  const onSuggestion = (sid: SuggestionId, prompt: string) => {
+    if (sid === 'summarize') composerRef.current?.pickFiles(prompt) // needs a document first
+    else void onSend(prompt, [])
+  }
+  const suggestions = isEmpty ? <Suggestions variant={desktop ? 'wrap' : 'row'} disabled={!current} onPick={onSuggestion} /> : null
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <ChatHeader conversation={id && conv.data ? conv.data.conversation : undefined} />
-      {loadFailed ? (
-        <p role="alert" className="m-6 text-sm text-danger">{t('chat.loadFailed')}</p>
-      ) : (
-        <MessageList
-          messages={messages}
-          conversationKey={id ?? 'new'}
-          userName={user.display_name}
-          loading={!!id && conv.isLoading && !run}
-          onExample={(text) => {
-            setSeed(text)
-            setDraftKey((k) => k + 1)
-          }}
-        />
-      )}
-      {(sendError || run?.error) && (
-        <p role="alert" data-testid="send-error" className="mx-auto w-full max-w-3xl px-4 pb-2 text-sm text-danger">
-          {sendError ?? err(new ApiError(run?.error ?? 'generic', 0, ''))}
-        </p>
-      )}
-      <Composer
-        key={draftKey}
-        initialText={seed}
-        conversationId={id}
-        streaming={streaming}
-        disabled={!current}
-        toolbar={
-          <>
-            {switchable && desktop && <ModelPicker models={items} value={current} onChange={onModel} />}
-            <ReasoningLevel model={current} value={level} onChange={(l) => current && setLevel(current.id, l)} />
-          </>
-        }
-        renderRing={({ text }) => <ContextRing data={context.data} model={current} draftText={text} />}
-        onAttachmentsChange={onAttachmentsChange}
-        autoFocus
-        onSend={onSend}
-        onStop={onStop}
-      />
+      <div className={cn('flex min-h-0 flex-1 flex-col', isEmpty && desktop && 'justify-center pb-[6vh]')}>
+        {loadFailed ? (
+          <p role="alert" className="m-6 text-sm text-danger">{t('chat.loadFailed')}</p>
+        ) : isEmpty ? (
+          // phones: centred in the space above the suggestions and the composer
+          <div className={cn('flex items-center justify-center', desktop ? 'pb-6' : 'min-h-0 flex-1')}>
+            <EmptyState name={user.display_name} />
+          </div>
+        ) : (
+          <MessageList messages={messages} conversationKey={id ?? 'new'} />
+        )}
+        {(sendError || run?.error) && (
+          <p role="alert" data-testid="send-error" className="mx-auto w-full max-w-3xl px-4 pb-2 text-sm text-danger">
+            {sendError ?? err(new ApiError(run?.error ?? 'generic', 0, ''))}
+          </p>
+        )}
+        {!desktop && suggestions}
+        <div ref={composerWrap}>
+          <Composer
+            ref={composerRef}
+            key={draftKey}
+            initialText={seed}
+            conversationId={id}
+            streaming={streaming}
+            disabled={!current}
+            toolbar={
+              <>
+                {switchable && desktop && <ModelPicker models={items} value={current} onChange={onModel} />}
+                <ReasoningLevel model={current} value={level} onChange={(l) => current && setLevel(current.id, l)} />
+              </>
+            }
+            renderRing={({ text }) => <ContextRing data={context.data} model={current} draftText={text} />}
+            onAttachmentsChange={onAttachmentsChange}
+            autoFocus
+            onSend={onSend}
+            onStop={onStop}
+          />
+        </div>
+        {desktop && suggestions}
+      </div>
     </div>
   )
 }

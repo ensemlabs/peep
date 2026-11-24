@@ -44,18 +44,14 @@ describe('assistant hover actions', () => {
 
 describe('empty state greeting', () => {
   it.each([[8, 'Good morning, Ann'], [14, 'Good afternoon, Ann'], [19, 'Good evening, Ann'], [2, 'Still up, Ann?']])('hour %s', (h, text) => {
-    renderWithI18n(<EmptyState onExample={() => {}} name="Ann Lee" hour={h} />)
+    renderWithI18n(<EmptyState name="Ann Lee" hour={h} />)
     expect(screen.getByTestId('greeting')).toHaveTextContent(text)
   })
   it('falls back without a name and localises', () => {
-    renderWithI18n(<EmptyState onExample={() => {}} hour={8} />)
+    renderWithI18n(<EmptyState hour={8} />)
     expect(screen.getByTestId('greeting')).toHaveTextContent('How can I help you today?')
-    renderWithI18n(<EmptyState onExample={() => {}} name="Lan" hour={8} />, 'vi')
+    renderWithI18n(<EmptyState name="Lan" hour={8} />, 'vi')
     expect(screen.getAllByTestId('greeting').at(-1)).toHaveTextContent('Chào buổi sáng, Lan')
-  })
-  it('has four icon suggestion cards', () => {
-    renderWithI18n(<EmptyState onExample={() => {}} name="A" />)
-    expect(screen.getAllByTestId('example-prompt')).toHaveLength(4)
   })
   it('time-of-day buckets and first name', () => {
     expect([4, 5, 11, 12, 17, 18, 21, 22].map(timeOfDay)).toEqual(['night', 'morning', 'morning', 'afternoon', 'afternoon', 'evening', 'evening', 'night'])

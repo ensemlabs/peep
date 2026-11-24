@@ -92,7 +92,12 @@ export function ChatHeader({ conversation }: Props) {
   return (
     <TopBar plain>
       <div className="flex min-w-0 flex-1 items-center max-md:justify-center">
-        {conversation && <ConversationTitle conv={conversation} />}
+        {conversation ? (
+          <ConversationTitle conv={conversation} />
+        ) : (
+          // Empty chat on phones: the app name keeps the header from looking vacant.
+          <span data-testid="header-app-name" className="truncate text-sm font-medium md:hidden">{t('app.name')}</span>
+        )}
       </div>
       <button
         type="button"

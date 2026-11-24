@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode, type Ref } from 'react'
 import { ArrowUp, FileText, Film, Music, Plus, Square, X, AlertCircle } from 'lucide-react'
 import { api, uploadFile as defaultUpload } from '@/api/client'
 import type { FileMeta } from '@/api/types'
@@ -38,18 +38,37 @@ interface Props {
   toolbar?: ReactNode
   /** Called when the set of ready attachments changes (add/remove/finish). */
   onAttachmentsChange?: (count: number) => void
+  ref?: Ref<ComposerHandle>
+}
+
+export interface ComposerHandle {
+  /** Opens the file picker; after files are attached, an empty draft is prefilled with `prefill`. */
+  pickFiles: (prefill?: string) => void
 }
 
 let seq = 0
 const defaultRemove = (id: string) => api.deleteFile(id).catch(() => {})
 
-export function Composer({ streaming, disabled, onSend, onStop, upload = defaultUpload, conversationId, removeFile = defaultRemove, autoFocus, initialText = '', renderRing, toolbar, onAttachmentsChange }: Props) {
+export function Composer({ streaming, disabled, onSend, onStop, upload = defaultUpload, conversationId, removeFile = defaultRemove, autoFocus, initialText = '', renderRing, toolbar, onAttachmentsChange, ref }: Props) {
   const { t, err } = useI18n()
   const [text, setText] = useState(initialText)
   const [items, setItems] = useState<Attachment[]>([])
   const [dragging, setDragging] = useState(false)
   const taRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const prefillRef = useRef<string | null>(null)
+  useEffect(() => {
+    const el = fileRef.current
+    const onCancel = () => (prefillRef.current = null) // picker dismissed: no prefill
+    el?.addEventListener('cancel', onCancel)
+    return () => el?.removeEventListener('cancel', onCancel)
+  }, [])
+  useImperativeHandle(ref, () => ({
+    pickFiles: (prefill) => {
+      prefillRef.current = prefill ?? null
+      fileRef.current?.click()
+    },
+  }))
   const itemsRef = useRef(items)
   itemsRef.current = items
 
@@ -82,6 +101,11 @@ export function Composer({ streaming, disabled, onSend, onStop, upload = default
   const addFiles = useCallback(
     (files: File[]) => {
       if (!files.length) return
+      if (prefillRef.current !== null) {
+        const pre = prefillRef.current
+        prefillRef.current = null
+        setText((cur) => (cur.trim() ? cur : pre))
+      }
       const created: Attachment[] = files.map((file) => ({
         key: `f${++seq}`,
         file,

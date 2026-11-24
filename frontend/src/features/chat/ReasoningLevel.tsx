@@ -1,7 +1,8 @@
-import { Brain, Check, ChevronDown } from 'lucide-react'
+import { Check, ChevronDown, Lightbulb } from 'lucide-react'
 import { DropdownMenu } from 'radix-ui'
 import type { ModelInfo } from '@/api/types'
 import { useT } from '@/i18n'
+import { cn } from '@/lib/cn'
 import { levelMode } from '@/lib/reasoning'
 
 interface Props {
@@ -21,9 +22,11 @@ export function ReasoningLevel({ model, value, onChange }: Props) {
       <span
         data-testid="reasoning-level"
         data-mode="single"
+        title={t('header.thinkingLevel')}
         className="flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[13px] text-muted tap:h-10"
       >
-        {t('header.alwaysOn')}
+        <Lightbulb className="size-4 text-amber-500" aria-hidden />
+        <span className="max-[329px]:hidden">{t('header.alwaysOn')}</span>
       </span>
     )
   }
@@ -37,10 +40,15 @@ export function ReasoningLevel({ model, value, onChange }: Props) {
         data-mode="multi"
         data-value={current.id}
         aria-label={`${t('header.thinkingLevel')}: ${current.label}`}
+        title={t('header.thinkingLevel')}
         className="flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[13px] text-muted hover:bg-hover hover:text-fg data-[state=open]:bg-hover tap:h-10"
       >
-        <Brain className="hidden size-4 max-[329px]:block" aria-hidden />
-        <span className="max-w-28 truncate max-[329px]:hidden">{current.label}</span>
+        {/* The bulb says what this is about: muted while off, accent colour once thinking is on. */}
+        <Lightbulb className={cn('size-4 shrink-0', current.id === 'off' ? 'text-muted' : 'text-amber-500')} aria-hidden />
+        <span className="max-w-32 truncate max-[329px]:hidden">
+          <span className="hidden md:inline">{t('reasoning.label')}: </span>
+          {current.label}
+        </span>
         <ChevronDown className="size-3.5 text-muted" aria-hidden />
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>

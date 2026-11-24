@@ -3,7 +3,6 @@ import { ArrowDown } from 'lucide-react'
 import type { Message } from '@/api/types'
 import { useT } from '@/i18n'
 import { MessageView } from './MessageView'
-import { EmptyState } from './EmptyState'
 
 function MessageSkeleton() {
   return (
@@ -21,14 +20,11 @@ function MessageSkeleton() {
 interface Props {
   messages: Message[]
   conversationKey: string
-  onExample: (text: string) => void
-  userName?: string
-  loading?: boolean
 }
 
 const THRESHOLD = 80
 
-export function MessageList({ messages, conversationKey, onExample, userName, loading }: Props) {
+export function MessageList({ messages, conversationKey }: Props) {
   const t = useT()
   const scroller = useRef<HTMLDivElement>(null)
   const content = useRef<HTMLDivElement>(null)
@@ -78,13 +74,7 @@ export function MessageList({ messages, conversationKey, onExample, userName, lo
     <div className="relative min-h-0 flex-1">
       <div ref={scroller} onScroll={onScroll} className="h-full overflow-y-auto overflow-x-hidden overscroll-contain" data-testid="message-scroller">
         <div ref={content} role="log" aria-label={t('chat.messageList')} className="mx-auto flex w-full max-w-[768px] flex-col gap-6 px-4 py-6">
-          {messages.length === 0 && loading ? (
-            <MessageSkeleton />
-          ) : messages.length === 0 ? (
-            <EmptyState onExample={onExample} name={userName} />
-          ) : (
-            messages.map((m) => <MessageView key={m.id} message={m} />)
-          )}
+          {messages.length === 0 ? <MessageSkeleton /> : messages.map((m) => <MessageView key={m.id} message={m} />)}
         </div>
       </div>
       {showJump && (
