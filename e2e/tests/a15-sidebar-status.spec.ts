@@ -76,7 +76,7 @@ test.describe('A15 sidebar status', () => {
 
     const viaEsc = `stop esc ${rand()}`
     await startChat(page, REPLAY_MODEL, viaEsc)
-    await expect(page.getByTestId('run-status')).toBeVisible()
+    await expect(page.getByTestId('stop-button')).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(row(page, viaEsc)).toHaveAttribute('data-status', 'stopped')
     await expect(row(page, viaEsc).getByTestId('conv-indicator')).toHaveCount(0)

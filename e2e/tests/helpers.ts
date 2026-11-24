@@ -186,10 +186,17 @@ export const test = base.extend<Fixtures>({
 
 // ---------------------------------------------------------------- chat UI helpers
 
+/** Desktop: compact picker in the composer toolbar. Phones (< 768px): inside the drawer (open the hamburger first). */
 export async function selectModel(page: Page, id: string) {
   const picker = page.getByTestId('model-picker')
+  const drawer = (page.viewportSize()?.width ?? 1280) < 768
+  if (drawer) await page.getByTestId('hamburger').click()
   await picker.click()
   await page.getByTestId(`model-option-${id}`).click()
+  if (drawer) {
+    await page.getByTestId('drawer-backdrop').click({ position: { x: page.viewportSize()!.width - 10, y: 300 } })
+    await expect(page.getByTestId('sidebar')).toBeHidden()
+  }
 }
 
 /** Picks a thinking level in the composer's "reasoning-level" dropdown (model must support levels). */

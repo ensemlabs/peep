@@ -15,7 +15,7 @@ test('A5 @gemini: live thinking block, collapse to "Thought for Ns", toggle, pyt
   await setThinking(page, 'high')
 
   // Record (from inside the page, so it cannot be missed) whether the thinking step was ever open and live
-  // (run-status Pip in "thinking" state + non-empty text) while the assistant message was still streaming.
+  // (shimmering label + non-empty text) while the assistant message was still streaming.
   await page.evaluate(() => {
     const w = window as unknown as { __live: { text: number } | null }
     w.__live = null
@@ -24,10 +24,9 @@ test('A5 @gemini: live thinking block, collapse to "Thought for Ns", toggle, pyt
       if (!step) return
       const streaming = !!document.querySelector('[data-testid="message-assistant"][data-status="streaming"]')
       const open = step.getAttribute('data-state') === 'open'
-      // The only Pip in the conversation lives in the run-status line; it follows the running part.
-      const mascot = document.querySelector('[data-testid="run-status"] [data-testid="mascot"]')?.getAttribute('data-state')
+      const shimmer = step.querySelector('[data-testid="thinking-label"]')?.getAttribute('data-shimmer') === 'true'
       const text = step.querySelector('[data-testid="thinking-text"]')?.textContent?.trim() ?? ''
-      if (streaming && open && mascot === 'thinking' && text.length > 0) w.__live = { text: text.length }
+      if (streaming && open && shimmer && text.length > 0) w.__live = { text: text.length }
     }
     new MutationObserver(check).observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true })
   })
@@ -36,20 +35,24 @@ test('A5 @gemini: live thinking block, collapse to "Thought for Ns", toggle, pyt
   const msg = lastAssistant(page)
   await expect(msg).toBeVisible()
 
-  // The Claude-Code-style status line is shown while streaming, with an animated Pip.
-  const status = page.getByTestId('run-status')
-  await expect(status).toBeVisible()
-  const mascot = status.getByTestId('mascot')
-  await expect(mascot).toBeVisible()
-  expect(await mascot.locator('.pip-float').evaluate((el) => getComputedStyle(el).animationName), 'Pip animation').not.toBe('none')
+  // Before the first content: the pending Pip is shown (visibility strict, animation soft: the window can be short).
+  const pending = page.getByTestId('reply-pending')
+  await expect(pending).toBeVisible()
+  await expect(pending.getByTestId('mascot')).toBeVisible()
+  // Any element of the mascot svg must animate (works for any mascot design).
+  const animated = await pending
+    .locator('[data-testid="mascot"]')
+    .evaluate((m) => [m, ...m.querySelectorAll('*')].some((el) => getComputedStyle(el).animationName !== 'none'))
+    .catch(() => false)
+  expect.soft(animated, 'pending mascot animates (soft)').toBe(true)
   await expect(msg).toHaveAttribute('data-status', /complete|error|stopped/, { timeout: GEMINI_TIMEOUT - 30_000 })
   await expect(msg, 'Gemini run did not complete (refusal / upstream error?)').toHaveAttribute('data-status', 'complete')
 
-  await expect(page.getByTestId('run-status'), 'run-status disappears when done').toHaveCount(0)
+  await expect(page.getByTestId('reply-pending'), 'pending Pip is gone once content arrived').toHaveCount(0)
   const step = msg.getByTestId('step-thinking')
   expect(await step.count(), 'Gemini produced no thinking part on this run (retry should cover it)').toBeGreaterThan(0)
   const live = await page.evaluate(() => (window as unknown as { __live: { text: number } | null }).__live)
-  expect(live, 'thinking step was never open + live (run-status Pip=thinking, non-empty text) while streaming').not.toBeNull()
+  expect(live, 'thinking step was never open + live (shimmering label, non-empty text) while streaming').not.toBeNull()
 
   // Finished: collapsed, header "Thought for Ns".
   await expect(step).toHaveAttribute('data-state', 'closed')

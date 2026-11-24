@@ -1,5 +1,5 @@
 import {
-  attachShot, expect, lastAssistant, noHorizontalScroll, openStep, startReplay, test, waitAssistantDone,
+  attachShot, expect, lastAssistant, noHorizontalScroll, startReplay, test, waitAssistantDone,
 } from './helpers'
 
 test.describe('A10 responsive layout', () => {
@@ -56,8 +56,7 @@ test.describe('A10 responsive layout', () => {
     await attachShot(page, testInfo, 'replay-done')
 
     const msg = lastAssistant(page)
-    const imgs = msg.getByTestId('step-tool').filter({ hasText: 'generate_images' })
-    await openStep(imgs)
+    const imgs = msg.getByTestId('tool-group').filter({ hasText: 'generate_images' })
     await expect(imgs.getByTestId('gallery-item')).toHaveCount(5)
     await noHorizontalScroll(page)
     await attachShot(page, testInfo, 'replay-gallery-open')

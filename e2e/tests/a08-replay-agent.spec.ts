@@ -34,10 +34,9 @@ test('A8: replay:agent-demo renders thinking, tool cards, nested sub-agents, gal
   await openStep(inner)
   await expect(inner.getByTestId('markdown')).toContainText('Miller-Rabin')
 
-  // Gallery of 5 + lightbox next/thumbnails.
-  const imgs = tools.filter({ hasText: 'generate_images' })
-  await openStep(imgs)
-  const gallery = imgs.getByTestId('gallery')
+  // Results are shown under the tool row (a tool-group), no expanding needed. Gallery of 5 + lightbox next/thumbnails.
+  const group = (name: string) => msg.getByTestId('tool-group').filter({ hasText: name })
+  const gallery = group('generate_images').getByTestId('gallery')
   await expect(gallery).toHaveAttribute('data-count', '5')
   await expect(gallery.getByTestId('gallery-item')).toHaveCount(5)
   await gallery.getByTestId('gallery-item').first().locator('button').first().click()
@@ -52,11 +51,7 @@ test('A8: replay:agent-demo renders thinking, tool cards, nested sub-agents, gal
   await page.keyboard.press('Escape')
   await expect(lb).toHaveCount(0)
 
-  // Video and audio live inside tool cards.
-  const video = tools.filter({ hasText: 'render_video' })
-  await openStep(video)
-  await expect(video.getByTestId('video-card').first()).toBeVisible()
-  const tts = tools.filter({ hasText: 'text_to_speech' })
-  await openStep(tts)
-  await expect(tts.getByTestId('audio-card')).toBeVisible()
+  // Video and audio belong to their tool cards.
+  await expect(group('render_video').getByTestId('video-card').first()).toBeVisible()
+  await expect(group('text_to_speech').getByTestId('audio-card')).toBeVisible()
 })
