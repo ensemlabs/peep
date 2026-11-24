@@ -14,6 +14,15 @@
 
 <p align="center"><sub><i>One agent run, live: thinking, a plan, tools, a sub-agent and generated images. Demo media were made with Gemini.</i></sub></p>
 
+## Watch the 45-second tour
+
+<p align="center"><a href="docs/media/peep-promo.mp4"><img src="docs/images/promo-poster.jpg" alt="Play the Peep promo video (45 seconds)" width="100%"></a></p>
+
+<p align="center"><sub>Click to play or download <a href="docs/media/peep-promo.mp4"><code>docs/media/peep-promo.mp4</code></a> (1080p, 60 fps, 45 s).
+Music: "Newer Wave" by Kevin MacLeod (<a href="https://incompetech.com">incompetech.com</a>), licensed under
+<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Sound effect: "Pop, High, A (H1).wav" by InspectorJ
+(<a href="https://freesound.org">freesound.org</a>), CC BY 4.0.</sub></p>
+
 ## What is Peep
 
 Peep is a self-hosted chat web app that shows the whole run of an AI agent, not only its final answer: thinking, tool

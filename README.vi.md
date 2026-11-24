@@ -14,6 +14,15 @@
 
 <p align="center"><sub><i>Một lượt chạy agent trực tiếp: suy nghĩ, kế hoạch, công cụ, sub-agent và ảnh được tạo ra. Ảnh demo do Gemini tạo.</i></sub></p>
 
+## Xem video giới thiệu 45 giây
+
+<p align="center"><a href="docs/media/peep-promo.mp4"><img src="docs/images/promo-poster.jpg" alt="Phát video giới thiệu Peep (45 giây)" width="100%"></a></p>
+
+<p align="center"><sub>Bấm để xem hoặc tải <a href="docs/media/peep-promo.mp4"><code>docs/media/peep-promo.mp4</code></a> (1080p, 60 fps, 45 giây).
+Nhạc: "Newer Wave" của Kevin MacLeod (<a href="https://incompetech.com">incompetech.com</a>), giấy phép
+<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Hiệu ứng âm thanh: "Pop, High, A (H1).wav" của InspectorJ
+(<a href="https://freesound.org">freesound.org</a>), CC BY 4.0.</sub></p>
+
 ## Peep là gì
 
 Peep là ứng dụng chat tự host, cho bạn thấy toàn bộ quá trình agent làm việc chứ không chỉ câu trả lời cuối: phần suy
