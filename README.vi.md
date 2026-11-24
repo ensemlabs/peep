@@ -1,8 +1,10 @@
 <p align="center"><a href="README.md">English</a> | Tiếng Việt</p>
 
-<p align="center"><img src="docs/images/peep-mark.svg" alt="Peep" width="72"></p>
+<p align="center"><img src="docs/images/peep.svg" alt="Peep, chú gà con màu vàng, đang vẫy chào" width="140"></p>
 
 <h1 align="center">Peep</h1>
+
+<p align="center"><img src="docs/images/peep-mark.svg" alt="Ensemble Labs" width="18" valign="middle">&nbsp;<sub>by Ensemble Labs</sub></p>
 
 <p align="center">Giao diện chat kiểu ChatGPT dành cho AI agent: xem agent suy nghĩ, gọi công cụ và tạo nội dung ngay khi nó đang làm.</p>
 

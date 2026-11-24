@@ -1,8 +1,10 @@
 <p align="center">English | <a href="README.vi.md">Tiếng Việt</a></p>
 
-<p align="center"><img src="docs/images/peep-mark.svg" alt="Peep" width="72"></p>
+<p align="center"><img src="docs/images/peep.svg" alt="Peep, the yellow chick mascot, waving hello" width="140"></p>
 
 <h1 align="center">Peep</h1>
+
+<p align="center"><img src="docs/images/peep-mark.svg" alt="Ensemble Labs" width="18" valign="middle">&nbsp;<sub>by Ensemble Labs</sub></p>
 
 <p align="center">A ChatGPT-style web UI for AI agents: watch them think, call tools and make things, live.</p>
 
