@@ -31,7 +31,7 @@ jobs:
             target: ""
             description: "Peep web: nginx serving the Peep SPA and proxying /api"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
@@ -68,7 +68,7 @@ jobs:
     needs: images
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Create the release with generated notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
