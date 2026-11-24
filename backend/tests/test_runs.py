@@ -69,10 +69,10 @@ def test_fixtures_validate_and_assets_exist():
     assert {"agent-demo", "error-demo"} <= set(list_fixture_names())
     for name in list_fixture_names():
         assert load_fixture(name).steps
-    for asset in ("demo.webm", "demo.mp4", "demo.mp3", *[f"gallery-{i}.png" for i in range(1, 6)]):
+    for asset in ("demo.webm", "demo.mp4", "demo.mp3", *[f"gallery-{i}.jpg" for i in range(1, 6)]):
         assert (ASSETS_DIR / asset).is_file()
     total = sum(p.stat().st_size for p in ASSETS_DIR.iterdir() if p.suffix != ".md")
-    assert total <= 3 * 1024 * 1024
+    assert total <= 6 * 1024 * 1024
 
 
 @pytest.mark.parametrize(
@@ -95,7 +95,7 @@ def test_fixture_validation_rejects(bad):
 def test_agent_demo_fixture_has_expected_shape():
     steps = load_fixture("agent-demo").steps
     total = sum(s.after_ms for s in steps) / 1000
-    assert 15 <= total <= 26
+    assert 18 <= total <= 26
     assert steps[0].part["type"] == "thinking"
 
 
@@ -122,33 +122,41 @@ async def test_agent_demo_run_builds_expected_tree(make_client):
     parts = asst["parts"]
     top = [(p["type"], p.get("name")) for p in parts]
     assert top == [
-        ("thinking", None), ("text", None), ("tool", "read_file"), ("tool", "run_tests"), ("subagent", "researcher"),
-        ("tool", "generate_images"), ("tool", "render_video"), ("tool", "text_to_speech"), ("text", None),
+        ("thinking", None), ("text", None), ("tool", "read_file"), ("subagent", "art-director"),
+        ("tool", "generate_images"), ("tool", "make_clip"), ("tool", "make_chime"), ("text", None),
     ]
     assert parts[0]["status"] == "done" and parts[0]["text"] and parts[0]["ended_at"]
     read = parts[2]
-    assert read["input"] == {"path": "src/primes.py"} and "def is_prime" in read["output"] and read["status"] == "done"
-    assert json.loads(parts[3]["output"])["failed"] == 1
+    assert read["input"] == {"path": "brand/peep.md"} and "Peep" in read["output"] and "#FFD54A" in read["output"]
+    assert read["status"] == "done"
 
-    researcher = parts[4]
-    assert [(p["type"], p.get("name")) for p in researcher["parts"]] == [
-        ("tool", "web_search"), ("subagent", "summarizer"), ("text", None),
+    director = parts[3]
+    assert [(p["type"], p.get("name")) for p in director["parts"]] == [
+        ("tool", "web_search"), ("subagent", "copywriter"), ("text", None),
     ]
-    summarizer = researcher["parts"][1]
-    assert [p["type"] for p in summarizer["parts"]] == ["text"] and summarizer["parts"][0]["text"]  # 2 levels deep
-    assert researcher["status"] == summarizer["status"] == "done"
+    search = director["parts"][0]
+    assert search["input"] == {"query": "cozy 3D mascot photography soft light"} and len(json.loads(search["output"])) == 3
+    copywriter = director["parts"][1]  # sub-agent inside a sub-agent: two levels deep
+    assert [p["type"] for p in copywriter["parts"]] == ["text"] and "See everything your agent does" in copywriter["parts"][0]["text"]
+    assert director["status"] == copywriter["status"] == "done"
 
-    gallery = parts[5]["files"]
+    images = parts[4]
+    assert images["input"]["count"] == 5 and len(images["input"]["prompts"]) == 5 and images["input"]["model"] == "gemini"
+    gallery = images["files"]
     assert len(gallery) == 5 and all(f["kind"] == "image" and f["thumb_url"] and f["width"] == 1600 for f in gallery)
-    assert [f["kind"] for f in parts[6]["files"]] == ["video", "video"]
-    assert [f["mime"] for f in parts[6]["files"]] == ["video/webm", "video/mp4"]
-    assert [(f["kind"], f["mime"]) for f in parts[7]["files"]] == [("audio", "audio/mpeg")]
-    final = parts[8]["text"]
-    assert "```python" in final and "| Algorithm |" in final
+    assert [f["mime"] for f in gallery] == ["image/jpeg"] * 5
+    assert parts[5]["input"] == {"source": "generated images", "count": 5, "seconds": 8, "style": "slow zoom with crossfades"}
+    assert parts[5]["output"] == "Assembling the clip...\nBuilt an 8-second clip from the generated images."
+    assert [f["kind"] for f in parts[5]["files"]] == ["video", "video"]
+    assert [f["mime"] for f in parts[5]["files"]] == ["video/webm", "video/mp4"]
+    assert [(f["kind"], f["mime"]) for f in parts[6]["files"]] == [("audio", "audio/mpeg")]
+    final = parts[7]["text"]
+    assert "```html" in final and "| Asset | File | Use |" in final and "AI-generated" in final
+    assert "assembled from" in final and "rendered with Gemini" not in final
     assert asst["content"].endswith(final)
 
     # every stored file is served to the owner, with working ranges
-    webm = parts[6]["files"][0]
+    webm = parts[5]["files"][0]
     r = await c.get(webm["url"], headers={"Range": "bytes=0-1"})
     assert r.status_code == 206 and r.content == (ASSETS_DIR / "demo.webm").read_bytes()[:2]
     r = await c.get(gallery[0]["thumb_url"])
@@ -263,7 +271,7 @@ async def test_client_disconnect_does_not_cancel_run(live_api, settings, monkeyp
     assert registry.is_busy(uuid.UUID(cid))  # still running without any subscriber
     await registry.wait_idle()
     asst = (await conversation_messages(c, cid))[1]
-    assert asst["status"] == "complete" and asst["parts"][-1]["type"] == "text" and len(asst["parts"]) == 9
+    assert asst["status"] == "complete" and asst["parts"][-1]["type"] == "text" and len(asst["parts"]) == 8
     await c.aclose()
 
 
@@ -301,7 +309,7 @@ async def test_stop_marks_stopped_and_keeps_partial_parts(live_api, settings, mo
         events.append((name, data))
         if name == "message":
             asst_id = data["assistant_message"]["id"]
-        if name == "part" and data["part"].get("name") == "run_tests":
+        if name == "part" and data["part"].get("name") == "read_file":
             break
     r = await c.post(f"/api/messages/{asst_id}/stop")
     assert r.status_code == 202
@@ -312,7 +320,7 @@ async def test_stop_marks_stopped_and_keeps_partial_parts(live_api, settings, mo
     asst = (await conversation_messages(c, cid))[1]
     assert asst["status"] == "stopped" and asst["error"] is None
     types = [p.get("name") or p["type"] for p in asst["parts"]]
-    assert types[:4] == ["thinking", "text", "read_file", "run_tests"] and len(types) < 9
+    assert types[:3] == ["thinking", "text", "read_file"] and len(types) < 8
     assert asst["parts"][0]["status"] == "done"
     assert asst["parts"][-1]["status"] in ("done", "error")  # nothing left "running"
     assert not [p for p in asst["parts"] if p.get("status") == "running"]
@@ -380,7 +388,7 @@ async def test_parts_flushed_to_db_during_run(live_api, settings, monkeypatch):
     cid = await new_conversation(c)
     cm, resp = await start_stream(c, cid)
     async for name, data in sse_iter(resp):
-        if name == "part" and data["part"].get("name") == "run_tests":
+        if name == "part" and data["part"].get("name") == "art-director":
             break
     row = (await sql("SELECT status, parts FROM messages WHERE role = 'assistant'"))[0]
     assert row[0] == "streaming" and [p["type"] for p in row[1]][:3] == ["thinking", "text", "tool"]

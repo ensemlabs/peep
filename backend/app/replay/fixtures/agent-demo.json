@@ -11,42 +11,42 @@
    }
   },
   {
-   "after_ms": 0,
+   "after_ms": 700,
    "op": "delta",
    "part_id": "think1",
    "field": "text",
-   "text": "The user wants a faster primality check. "
+   "text": "A launch kit needs a look first, then assets that all feel like one brand. "
   },
   {
    "after_ms": 700,
    "op": "delta",
    "part_id": "think1",
    "field": "text",
-   "text": "First I should look at how `is_prime` is implemented today. "
+   "text": "I should read the brand guide before generating anything: the name, the palette, the tone. "
   },
   {
    "after_ms": 700,
    "op": "delta",
    "part_id": "think1",
    "field": "text",
-   "text": "Trial division up to n is O(n); going up to sqrt(n) and skipping even numbers is a cheap win. "
+   "text": "A cohesive mascot series works best when every image repeats the same character and the same soft lighting. "
   },
   {
    "after_ms": 700,
    "op": "delta",
    "part_id": "think1",
    "field": "text",
-   "text": "For 64-bit inputs a deterministic Miller-Rabin with a fixed witness set is better still. "
+   "text": "Plan: collect mood references, write a tagline, generate five images (hero, night coding, sticker sheet, poster, morning scene), "
   },
   {
    "after_ms": 700,
    "op": "delta",
    "part_id": "think1",
    "field": "text",
-   "text": "Plan: read the module, run the existing tests, research alternatives, then render a benchmark chart and a short walkthrough."
+   "text": "then a short promo clip of the mascot waving, and a small sound to go with it."
   },
   {
-   "after_ms": 600,
+   "after_ms": 500,
    "op": "update",
    "part_id": "think1",
    "patch": {
@@ -63,53 +63,46 @@
    }
   },
   {
-   "after_ms": 0,
+   "after_ms": 140,
    "op": "delta",
    "part_id": "plan",
    "field": "text",
-   "text": "I'll start by reading the current implementation, "
+   "text": "Here is the plan for the **Peep** launch kit:\n\n"
   },
   {
    "after_ms": 140,
    "op": "delta",
    "part_id": "plan",
    "field": "text",
-   "text": "then run the test suite, "
+   "text": "1. Read the brand guide\n"
   },
   {
    "after_ms": 140,
    "op": "delta",
    "part_id": "plan",
    "field": "text",
-   "text": "and have a research sub-agent compare algorithms.\n\n"
+   "text": "2. Gather mood references and a tagline\n"
   },
   {
    "after_ms": 140,
    "op": "delta",
    "part_id": "plan",
    "field": "text",
-   "text": "1. Read `src/primes.py`\n"
+   "text": "3. Generate five mascot images\n"
   },
   {
    "after_ms": 140,
    "op": "delta",
    "part_id": "plan",
    "field": "text",
-   "text": "2. Run the tests\n"
+   "text": "4. Render a short promo clip\n"
   },
   {
    "after_ms": 140,
    "op": "delta",
    "part_id": "plan",
    "field": "text",
-   "text": "3. Research faster algorithms\n"
-  },
-  {
-   "after_ms": 140,
-   "op": "delta",
-   "part_id": "plan",
-   "field": "text",
-   "text": "4. Benchmark and visualise the results\n"
+   "text": "5. Add a soft notification chime\n"
   },
   {
    "after_ms": 500,
@@ -119,7 +112,7 @@
     "type": "tool",
     "name": "read_file",
     "input": {
-     "path": "src/primes.py"
+     "path": "brand/peep.md"
     },
     "output": null,
     "files": [],
@@ -131,21 +124,21 @@
    "op": "delta",
    "part_id": "read",
    "field": "output",
-   "text": "def is_prime(n):\n    if n < 2:\n        return False\n    for "
+   "text": "# Peep\n\nMascot of Ensemble Labs.\n\n- Personality: friendly, curious\n- P"
   },
   {
-   "after_ms": 350,
+   "after_ms": 300,
    "op": "delta",
    "part_id": "read",
    "field": "output",
-   "text": "i in range(2, n):\n        if n % i == 0:\n            return "
+   "text": "alette: chick yellow #FFD54A, warm white, ink #0f1b3d\n- Tone: cozy, playful\n- Ru"
   },
   {
-   "after_ms": 350,
+   "after_ms": 300,
    "op": "delta",
    "part_id": "read",
    "field": "output",
-   "text": "False\n    return True\n"
+   "text": "les: round shapes, soft light, never angry\n"
   },
   {
    "after_ms": 300,
@@ -156,57 +149,13 @@
    }
   },
   {
-   "after_ms": 500,
-   "op": "part",
-   "part": {
-    "id": "tests",
-    "type": "tool",
-    "name": "run_tests",
-    "input": {
-     "path": "tests/test_primes.py"
-    },
-    "output": null,
-    "files": [],
-    "status": "running"
-   }
-  },
-  {
-   "after_ms": 1200,
-   "op": "delta",
-   "part_id": "tests",
-   "field": "output",
-   "text": "{\n  \"passed\": 7,\n  \"failed\": 1,\n  \"duration_s\": 2.41,\n  \"failures\": [\n"
-  },
-  {
-   "after_ms": 500,
-   "op": "delta",
-   "part_id": "tests",
-   "field": "output",
-   "text": "    {\n      \"test\": \"test_large_prime\",\n      \"error\": \"TimeoutError: is_prime(2"
-  },
-  {
-   "after_ms": 500,
-   "op": "delta",
-   "part_id": "tests",
-   "field": "output",
-   "text": "**61 - 1) exceeded 2s\"\n    }\n  ]\n}"
-  },
-  {
-   "after_ms": 200,
-   "op": "update",
-   "part_id": "tests",
-   "patch": {
-    "status": "done"
-   }
-  },
-  {
    "after_ms": 600,
    "op": "part",
    "part": {
     "id": "sa1",
     "type": "subagent",
-    "name": "researcher",
-    "task": "Compare primality-testing algorithms for 64-bit integers and recommend one.",
+    "name": "art-director",
+    "task": "Gather mood references for a cozy, friendly mascot series.",
     "parts": [],
     "status": "running"
    }
@@ -219,7 +168,7 @@
     "type": "tool",
     "name": "web_search",
     "input": {
-     "query": "deterministic Miller-Rabin 64-bit witnesses"
+     "query": "cozy 3D mascot photography soft light"
     },
     "output": null,
     "files": [],
@@ -232,14 +181,21 @@
    "op": "delta",
    "part_id": "sa1-search",
    "field": "output",
-   "text": "[\n  {\n    \"title\": \"Miller-Rabin primality test\",\n    \"url\": \"https://en.wikipedia.org/wiki/Miller%E2%80%93Rab"
+   "text": "[\n  {\n    \"title\": \"Soft-light product photography for plush toys\",\n    \"url\": \"https://example.com/soft-light-plush\"\n  "
   },
   {
-   "after_ms": 450,
+   "after_ms": 400,
    "op": "delta",
    "part_id": "sa1-search",
    "field": "output",
-   "text": "in_primality_test\"\n  },\n  {\n    \"title\": \"Deterministic variants for n < 2^64\",\n    \"url\": \"https://miller-rabin.appspot.com/\"\n  }\n]"
+   "text": "},\n  {\n    \"title\": \"Designing friendly 3D mascots\",\n    \"url\": \"https://example.com/friendly-3d-mascots\"\n  },\n  {\n    \"title\": \"Sticker she"
+  },
+  {
+   "after_ms": 400,
+   "op": "delta",
+   "part_id": "sa1-search",
+   "field": "output",
+   "text": "et layouts that sell\",\n    \"url\": \"https://example.com/sticker-sheets\"\n  }\n]"
   },
   {
    "after_ms": 200,
@@ -255,8 +211,8 @@
    "part": {
     "id": "sa2",
     "type": "subagent",
-    "name": "summarizer",
-    "task": "Summarise the search results in three sentences.",
+    "name": "copywriter",
+    "task": "Suggest a tagline for the launch.",
     "parts": [],
     "status": "running"
    },
@@ -273,39 +229,32 @@
    "parent": "sa2"
   },
   {
-   "after_ms": 0,
+   "after_ms": 260,
    "op": "delta",
    "part_id": "sa2-text",
    "field": "text",
-   "text": "Deterministic Miller-Rabin "
+   "text": "**See everything your agent does.**\n\n"
   },
   {
    "after_ms": 260,
    "op": "delta",
    "part_id": "sa2-text",
    "field": "text",
-   "text": "with the first twelve prime witnesses "
+   "text": "Alternatives:\n"
   },
   {
    "after_ms": 260,
    "op": "delta",
    "part_id": "sa2-text",
    "field": "text",
-   "text": "is exact for every n below 3.3e24, "
+   "text": "- Watch your agent think.\n"
   },
   {
    "after_ms": 260,
    "op": "delta",
    "part_id": "sa2-text",
    "field": "text",
-   "text": "so it covers all 64-bit integers. "
-  },
-  {
-   "after_ms": 260,
-   "op": "delta",
-   "part_id": "sa2-text",
-   "field": "text",
-   "text": "It runs in O(k log^3 n) time instead of O(sqrt n)."
+   "text": "- Every step, in plain sight."
   },
   {
    "after_ms": 300,
@@ -326,18 +275,18 @@
    "parent": "sa1"
   },
   {
-   "after_ms": 0,
+   "after_ms": 220,
    "op": "delta",
    "part_id": "sa1-text",
    "field": "text",
-   "text": "Recommendation: use deterministic Miller-Rabin "
+   "text": "References agree on soft window light, shallow depth of field and a single warm accent colour. "
   },
   {
    "after_ms": 220,
    "op": "delta",
    "part_id": "sa1-text",
    "field": "text",
-   "text": "with a small-prime pre-check."
+   "text": "Tagline picked."
   },
   {
    "after_ms": 300,
@@ -355,8 +304,15 @@
     "type": "tool",
     "name": "generate_images",
     "input": {
-     "prompt": "benchmark charts for the is_prime variants (illustrative): time, scaling, speedup, memory, summary",
-     "count": 5
+     "model": "gemini",
+     "count": 5,
+     "prompts": [
+      "A cute round yellow chick mascot sitting on a laptop keyboard, soft studio light, 3D render",
+      "The same cute fluffy round yellow chick mascot wearing tiny over-ear headphones, sitting in front of a glowing computer monitor with code at night, cozy desk lamp, 3D render, soft cinematic light",
+      "Sticker sheet of a cute fluffy round yellow chick mascot in four poses: waving hello, thinking, sleeping, celebrating with confetti; glossy die-cut sticker style with thick white outlines, light grey background, no text",
+      "Minimal brand poster: a cute fluffy round yellow chick mascot centered on a soft pastel yellow background with gentle shadow, lots of empty space, studio product photography, no text",
+      "A cute fluffy round yellow chick mascot holding a tiny coffee cup next to a stack of books and a small plant, warm morning sunlight through a window, 3D render, shallow depth of field"
+     ]
     },
     "output": null,
     "files": [],
@@ -364,18 +320,18 @@
    }
   },
   {
-   "after_ms": 1000,
+   "after_ms": 1200,
    "op": "delta",
    "part_id": "imgs",
    "field": "output",
-   "text": "Rendering 5 charts (time, scaling, speedup, memory, summary)..."
+   "text": "Generating 5 images..."
   },
   {
-   "after_ms": 800,
+   "after_ms": 900,
    "op": "delta",
    "part_id": "imgs",
    "field": "output",
-   "text": " done."
+   "text": "\n5 images generated with Gemini."
   },
   {
    "after_ms": 400,
@@ -384,11 +340,11 @@
    "patch": {
     "status": "done",
     "files": [
-     "asset:gallery-1.png",
-     "asset:gallery-2.png",
-     "asset:gallery-3.png",
-     "asset:gallery-4.png",
-     "asset:gallery-5.png"
+     "asset:gallery-1.jpg",
+     "asset:gallery-2.jpg",
+     "asset:gallery-3.jpg",
+     "asset:gallery-4.jpg",
+     "asset:gallery-5.jpg"
     ]
    }
   },
@@ -398,10 +354,12 @@
    "part": {
     "id": "video",
     "type": "tool",
-    "name": "render_video",
+    "name": "make_clip",
     "input": {
-     "title": "is_prime: how much faster? (illustrative benchmark)",
-     "duration_s": 6
+     "source": "generated images",
+     "count": 5,
+     "seconds": 8,
+     "style": "slow zoom with crossfades"
     },
     "output": null,
     "files": [],
@@ -409,18 +367,18 @@
    }
   },
   {
-   "after_ms": 800,
+   "after_ms": 1000,
    "op": "delta",
    "part_id": "video",
    "field": "output",
-   "text": "Animating the speedup chart, encoding webm (VP9) and mp4 (H.264)..."
+   "text": "Assembling the clip..."
   },
   {
-   "after_ms": 900,
+   "after_ms": 1100,
    "op": "delta",
    "part_id": "video",
    "field": "output",
-   "text": " done."
+   "text": "\nBuilt an 8-second clip from the generated images."
   },
   {
    "after_ms": 400,
@@ -438,12 +396,12 @@
    "after_ms": 400,
    "op": "part",
    "part": {
-    "id": "tts",
+    "id": "chime",
     "type": "tool",
-    "name": "text_to_speech",
+    "name": "make_chime",
     "input": {
-     "text": "Miller-Rabin is exact for 64-bit integers.",
-     "voice": "en-US"
+     "style": "soft two-note chime",
+     "seconds": 2
     },
     "output": null,
     "files": [],
@@ -451,16 +409,16 @@
    }
   },
   {
-   "after_ms": 700,
+   "after_ms": 600,
    "op": "delta",
-   "part_id": "tts",
+   "part_id": "chime",
    "field": "output",
-   "text": "Synthesised 5.0 s of audio."
+   "text": "Synthesized a short notification chime."
   },
   {
    "after_ms": 300,
    "op": "update",
-   "part_id": "tts",
+   "part_id": "chime",
    "patch": {
     "status": "done",
     "files": [
@@ -478,144 +436,151 @@
    }
   },
   {
-   "after_ms": 0,
+   "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "The slow test comes from trial division up to `n`. A determi"
+   "text": "The **Peep** launch kit is ready. The five images are AI-gen"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "nistic Miller-Rabin fixes it for every 64-bit input:\n\n"
+   "text": "erated with Gemini. The promo clip is assembled from those i"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "```python\n"
+   "text": "mages (slow zoom with crossfades), and the chime is a synthe"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "SMALL = (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37)\n\n\n"
+   "text": "sized sound, not a recording.\n\n| Asset | File | Use |\n"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "def is_prime(n: int) -> bool:\n    if n < 2:\n"
+   "text": "|---|---|---|\n"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "        return False\n    for p in SMALL:\n"
+   "text": "| Hero on laptop | `kit/hero.jpg` | Landing page header |\n"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "        if n % p == 0:\n            return n == p\n"
+   "text": "| Night coding | `kit/night.jpg` | Blog and social cover |\n"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "    d, r = n - 1, 0\n    while d % 2 == 0:\n        d //= 2\n"
+   "text": "| Sticker sheet | `kit/stickers.jpg` | Community swag |\n"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "        r += 1\n    for a in SMALL:\n        x = pow(a, d, n)\n"
+   "text": "| Minimal poster | `kit/poster.jpg` | Open Graph image |\n"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "        if x in (1, n - 1):\n            continue\n"
+   "text": "| Morning scene | `kit/morning.jpg` | Newsletter banner |\n"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "        for _ in range(r - 1):\n            x = x * x % n\n"
+   "text": "| Promo clip (assembled from the images) | `kit/promo.mp4` |"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "            if x == n - 1:\n                break\n"
+   "text": " Launch post (8 s) |\n"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "        else:\n            return False\n    return True\n```\n\n"
+   "text": "| Chime | `kit/chime.mp3` | Notification sound |\n\n"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "Benchmark (median of 5 runs):\n\n"
+   "text": "Use the poster as the share image and put the tagline in the"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "| Algorithm | `2**31 - 1` | `2**61 - 1` |\n|---|---|---|\n"
+   "text": " page title:\n\n```html\n"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "| Trial division | 41 ms | timeout |\n"
+   "text": "<title>Peep: See everything your agent does</title>\n"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "| Square-root bound | 0.9 ms | timeout |\n"
+   "text": "<meta property=\"og:title\" content=\"Peep: See everything your"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "| Miller-Rabin | 0.02 ms | 0.03 ms |\n\n"
+   "text": " agent does\" />\n"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "Charts, a short walkthrough video and an audio summary are a"
+   "text": "<meta property=\"og:image\" content=\"https://example.com/kit/p"
   },
   {
    "after_ms": 110,
    "op": "delta",
    "part_id": "final",
    "field": "text",
-   "text": "ttached above.\n"
+   "text": "oster.jpg\" />\n<meta name=\"theme-color\" content=\"#FFD54A\" />\n"
+  },
+  {
+   "after_ms": 110,
+   "op": "delta",
+   "part_id": "final",
+   "field": "text",
+   "text": "```\n"
   }
  ]
 }

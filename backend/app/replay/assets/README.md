@@ -1,41 +1,48 @@
 # Replay assets
 
 Binary assets used by the `replay:*` fixtures (`../fixtures/*.json` reference them as `"asset:<filename>"`).
-`agent-demo` tells the story "make `is_prime` faster": the tools produce benchmark charts, a short animated
-video and an audio clip. The numbers in the charts are **illustrative**, not measured (every chart says so in a
-footnote).
+`agent-demo` tells the story of a launch kit for "Peep", a yellow chick mascot.
 
-| File | What |
-| :--- | :--- |
-| `gallery-1.png` | Bar chart: time per 1M checks, five algorithms |
-| `gallery-2.png` | Line chart: runtime vs input size (log-log) |
-| `gallery-3.png` | Speedup vs trial division |
-| `gallery-4.png` | Memory use (log scale) |
-| `gallery-5.png` | Summary card, winner highlighted |
-| `demo.webm`, `demo.mp4` | 6 s, 1280x720: the speedup chart animates (bars grow, winner highlights) |
-| `demo.mp3` | 5 s soft tone (used by the `text_to_speech` tool) |
+## Provenance
 
-Charts (1600x1000) and video frames are drawn by `make_charts.py` with matplotlib; ffmpeg only encodes. Run these in
-this directory (nothing is installed on the host).
+The five images are **AI-generated with Gemini via the dev proxy (llm-proxy) on 2026-11-24**. The small
+sparkle in the corner of each image is Gemini's watermark and is left in on purpose. The video is **not** an AI
+video (Gemini could not render one at the time): it is a clip **assembled with ffmpeg from the five generated
+images** (slow zoom with crossfades). The chime is synthesized with ffmpeg (sine notes), not a recording.
 
-## Charts and frames
+| File | What | Prompt |
+| :--- | :--- | :--- |
+| `gallery-1.jpg` | Chick on a laptop keyboard | "A cute round yellow chick mascot sitting on a laptop keyboard, soft studio light, 3D render" |
+| `gallery-2.jpg` | Chick coding at night | "The same cute fluffy round yellow chick mascot wearing tiny over-ear headphones, sitting in front of a glowing computer monitor with code at night, cozy desk lamp, 3D render, soft cinematic light" |
+| `gallery-3.jpg` | Sticker sheet, four poses | "Sticker sheet of a cute fluffy round yellow chick mascot in four poses: waving hello, thinking, sleeping, celebrating with confetti; glossy die-cut sticker style with thick white outlines, light grey background, no text" |
+| `gallery-4.jpg` | Minimal poster | "Minimal brand poster: a cute fluffy round yellow chick mascot centered on a soft pastel yellow background with gentle shadow, lots of empty space, studio product photography, no text" |
+| `gallery-5.jpg` | Morning scene | "A cute fluffy round yellow chick mascot holding a tiny coffee cup next to a stack of books and a small plant, warm morning sunlight through a window, 3D render, shallow depth of field" |
+| `demo.mp4`, `demo.webm` | 8.1 s promo clip, 1280x720, 30 fps, silent-ish soft pad | assembled from `gallery-1..5.jpg` (no prompt) |
+| `demo.mp3` | 2 s soft two-note notification chime (synthesized) | n/a |
+
+## How the files were made
+
+Images: the generated PNGs (about 2400x1800) were downscaled to 1600 px wide and saved as progressive JPEG,
+quality 85 (Pillow `Image.resize(..., LANCZOS)`, `save(..., "JPEG", quality=85, optimize=True, progressive=True)`).
+
+Clip (`make_clip.sh` below, ffmpeg 6.1 in `jrottenberg/ffmpeg:6.1-alpine`): each image gets a slow zoom or pan
+centred on the chick (4:3 images cropped to 16:9; the sticker sheet is fitted whole on a blurred copy of itself), 1.6 s
+per image with 0.3 s crossfades, starting and ending on `gallery-1`. Images are upscaled to 3840x2160 before `zoompan`,
+which is what keeps the motion smooth.
 
 ```sh
-S=$(mktemp -d)   # scratch dir for the video frames
-docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD":/src:ro -v "$PWD":/out -v "$S":/frames \
-  python:3.13-slim sh -c 'pip install -q --user matplotlib && python /src/make_charts.py /out --frames /frames'
+docker run --rm --user "$(id -u):$(id -g)" -e ASSETS=/assets -v "$PWD":/assets:ro -v "$OUT":/out \
+  -v "$PWD/make_clip.sh":/make_clip.sh:ro --entrypoint sh jrottenberg/ffmpeg:6.1-alpine /make_clip.sh   # then copy $OUT/demo.* here
 ```
 
-## Video and audio (ffmpeg 6.1, `jrottenberg/ffmpeg:6.1-alpine`)
+Chime (ffmpeg 6.1, `jrottenberg/ffmpeg:6.1-alpine`):
 
 ```sh
-docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/out -v "$S":/frames:ro -w /out --entrypoint sh \
-  jrottenberg/ffmpeg:6.1-alpine -c '
-A="sine=frequency=330:duration=6,volume=0.08,afade=t=in:d=0.5,afade=t=out:st=5:d=1"
-ffmpeg -y -framerate 24 -i /frames/frame_%04d.png -f lavfi -i "$A" -c:v libvpx-vp9 -crf 38 -b:v 0 -cpu-used 2 -row-mt 1 -pix_fmt yuv420p -c:a libopus -b:a 48k -shortest demo.webm
-ffmpeg -y -framerate 24 -i /frames/frame_%04d.png -f lavfi -i "$A" -c:v libx264 -preset slow -crf 28 -pix_fmt yuv420p -c:a aac -b:a 64k -movflags +faststart -shortest demo.mp4
-ffmpeg -y -f lavfi -i "sine=frequency=523:duration=5" -c:a libmp3lame -b:a 64k demo.mp3
-'
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/out -w /out --entrypoint sh jrottenberg/ffmpeg:6.1-alpine -c '
+ffmpeg -y -f lavfi -i "sine=frequency=659:duration=1,afade=t=out:st=0.2:d=0.8" \
+  -f lavfi -i "sine=frequency=880:duration=1.5,afade=t=out:st=0.2:d=1.3" \
+  -filter_complex "[0]volume=0.5[a];[1]volume=0.5,adelay=450|450[b];[a][b]amix=inputs=2:normalize=0,atrim=0:2" \
+  -c:a libmp3lame -b:a 64k demo.mp3'
 ```
 
-Keep the total size of the assets under 3 MB (currently about 0.8 MB).
+Total size of the assets must stay under 6 MB.
