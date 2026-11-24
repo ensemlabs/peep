@@ -149,6 +149,8 @@ models replay a recorded event stream and call no LLM.
   sub-agent, `generate_images` returning 5 real Gemini-generated images, `make_clip` returning a short promo
   clip assembled from those images (WebM and MP4), `make_chime` returning a synthesized chime, and a final
   summary with a table and a code block.
+- `replay:code-demo` replays an agent writing code: a thinking block, a Python retry helper streamed into a
+  fenced code block, a `run_tests` tool with the pytest output, and a short closing snippet.
 - `replay:error-demo` writes some text, runs a `deploy` tool, then ends with an error message.
 
 ## Thinking levels

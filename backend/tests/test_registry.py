@@ -214,7 +214,7 @@ async def test_models_switchable_lists_everything_and_replay(make_client, use_re
     c, _ = await active_client(make_client)
     body = (await c.get("/api/models")).json()
     assert body["switchable"] is True
-    assert [m["id"] for m in body["items"]] == ["m1", "plain", "replay:agent-demo", "replay:error-demo"]
+    assert [m["id"] for m in body["items"]] == ["m1", "plain", "replay:agent-demo", "replay:code-demo", "replay:error-demo"]
     rp = body["items"][2]
     assert rp["provider"] == "replay" and rp["reasoning"] is None and rp["label"] == "Replay · Agent demo"
     monkeypatch.setattr(settings, "replay_enabled", False)

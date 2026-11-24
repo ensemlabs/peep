@@ -782,8 +782,9 @@ uses, so the UI cannot tell them apart. This is the quickest way to see how a re
   replaced by its FileMeta. See `backend/app/replay/assets/README.md` for how the assets were made.
 - Validation (at load time, unknown keys are rejected): `after_ms >= 0`; `part` steps need an id and a valid type;
   `parent` and `part_id` must refer to an earlier step; every `asset:` file must exist.
-- Shipped fixtures: `agent-demo` (thinking, tools, nested sub-agents, 5-image gallery, video, audio) and
-  `error-demo` (text, a tool, then an error).
+- Shipped fixtures: `agent-demo` (thinking, tools, nested sub-agents, 5-image gallery, video, audio),
+  `code-demo` (thinking, a streamed Python code block, a `run_tests` tool) and `error-demo` (text, a tool, then
+  an error).
 
 To plug a real agent in, add a provider with `async def run(ctx)` (`backend/app/providers/base.py`) that calls
 `ctx.emit_part(part, parent_id)`, `ctx.emit_delta(part_id, field, text)`, `ctx.emit_update(part_id, patch)` and

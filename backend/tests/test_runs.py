@@ -66,7 +66,7 @@ async def conversation_messages(c, cid):
 
 
 def test_fixtures_validate_and_assets_exist():
-    assert {"agent-demo", "error-demo"} <= set(list_fixture_names())
+    assert {"agent-demo", "code-demo", "error-demo"} <= set(list_fixture_names())
     for name in list_fixture_names():
         assert load_fixture(name).steps
     for asset in ("demo.webm", "demo.mp4", "demo.mp3", *[f"gallery-{i}.jpg" for i in range(1, 6)]):
@@ -99,7 +99,30 @@ def test_agent_demo_fixture_has_expected_shape():
     assert steps[0].part["type"] == "thinking"
 
 
+def test_code_demo_fixture_has_expected_shape():
+    steps = load_fixture("code-demo").steps
+    total = sum(s.after_ms for s in steps) / 1000
+    assert 9 <= total <= 11
+    assert steps[0].part["type"] == "thinking"
+
+
 # --- full replay runs (ASGITransport buffers the stream, time scale 0) -------------------------
+
+
+async def test_code_demo_run_completes_with_code_and_test_output(make_client):
+    c, _ = await active_client(make_client)
+    cid = await new_conversation(c)
+    r, events = await send_message(c, cid, "Write a retry helper", model="replay:code-demo")
+    assert r.status_code == 200 and events[-1][0] == "done" and events[-1][1]["status"] == "complete"
+    asst = (await conversation_messages(c, cid))[1]
+    assert asst["status"] == "complete" and asst["model"] == "replay:code-demo" and asst["error"] is None
+    parts = asst["parts"]
+    assert [(p["type"], p.get("name")) for p in parts] == [
+        ("thinking", None), ("text", None), ("tool", "run_tests"), ("text", None),
+    ]
+    assert parts[1]["text"].count("```") == 2 and "async def retry(" in parts[1]["text"]
+    assert parts[2]["status"] == "done" and "5 passed" in parts[2]["output"]
+    assert "```python" in parts[3]["text"] and "5 tests pass" in parts[3]["text"]
 
 
 async def test_agent_demo_run_builds_expected_tree(make_client):

@@ -1,0 +1,224 @@
+{
+ "steps": [
+  {
+   "after_ms": 300,
+   "op": "part",
+   "part": {
+    "id": "think1",
+    "type": "thinking",
+    "text": "",
+    "status": "running"
+   }
+  },
+  {
+   "after_ms": 600,
+   "op": "delta",
+   "part_id": "think1",
+   "field": "text",
+   "text": "The user wants a retry helper for async calls. "
+  },
+  {
+   "after_ms": 600,
+   "op": "delta",
+   "part_id": "think1",
+   "field": "text",
+   "text": "Exponential backoff with full jitter avoids retry storms. "
+  },
+  {
+   "after_ms": 600,
+   "op": "delta",
+   "part_id": "think1",
+   "field": "text",
+   "text": "I'll cap the delay, re-raise on the last attempt, "
+  },
+  {
+   "after_ms": 600,
+   "op": "delta",
+   "part_id": "think1",
+   "field": "text",
+   "text": "and add a quick test run to be sure."
+  },
+  {
+   "after_ms": 300,
+   "op": "update",
+   "part_id": "think1",
+   "patch": {
+    "status": "done"
+   }
+  },
+  {
+   "after_ms": 100,
+   "op": "part",
+   "part": {
+    "id": "code",
+    "type": "text",
+    "text": ""
+   }
+  },
+  {
+   "after_ms": 150,
+   "op": "delta",
+   "part_id": "code",
+   "field": "text",
+   "text": "Here's a small helper with full-jitter exponential backoff:\n\n"
+  },
+  {
+   "after_ms": 150,
+   "op": "delta",
+   "part_id": "code",
+   "field": "text",
+   "text": "```python\n"
+  },
+  {
+   "after_ms": 140,
+   "op": "delta",
+   "part_id": "code",
+   "field": "text",
+   "text": "import asyncio\nimport random\nfrom typing import Awaitable, Callable, TypeVar\n"
+  },
+  {
+   "after_ms": 160,
+   "op": "delta",
+   "part_id": "code",
+   "field": "text",
+   "text": "\nT = TypeVar(\"T\")\n"
+  },
+  {
+   "after_ms": 180,
+   "op": "delta",
+   "part_id": "code",
+   "field": "text",
+   "text": "\n\n"
+  },
+  {
+   "after_ms": 150,
+   "op": "delta",
+   "part_id": "code",
+   "field": "text",
+   "text": "async def retry(\n    call: Callable[[], Awaitable[T]],\n"
+  },
+  {
+   "after_ms": 170,
+   "op": "delta",
+   "part_id": "code",
+   "field": "text",
+   "text": "    attempts: int = 5,\n    base: float = 0.2,\n"
+  },
+  {
+   "after_ms": 140,
+   "op": "delta",
+   "part_id": "code",
+   "field": "text",
+   "text": "    cap: float = 5.0,\n) -> T:\n"
+  },
+  {
+   "after_ms": 160,
+   "op": "delta",
+   "part_id": "code",
+   "field": "text",
+   "text": "    \"\"\"Run `call`, retrying failures with full-jitter exponential backoff.\"\"\"\n    for attempt in range(attempts):\n"
+  },
+  {
+   "after_ms": 180,
+   "op": "delta",
+   "part_id": "code",
+   "field": "text",
+   "text": "        try:\n            return await call()\n"
+  },
+  {
+   "after_ms": 150,
+   "op": "delta",
+   "part_id": "code",
+   "field": "text",
+   "text": "        except Exception:\n            if attempt == attempts - 1:\n"
+  },
+  {
+   "after_ms": 170,
+   "op": "delta",
+   "part_id": "code",
+   "field": "text",
+   "text": "                raise\n            delay = min(cap, base * 2**attempt)\n"
+  },
+  {
+   "after_ms": 140,
+   "op": "delta",
+   "part_id": "code",
+   "field": "text",
+   "text": "            await asyncio.sleep(random.uniform(0, delay))\n    raise AssertionError(\"unreachable\")\n"
+  },
+  {
+   "after_ms": 150,
+   "op": "delta",
+   "part_id": "code",
+   "field": "text",
+   "text": "```\n"
+  },
+  {
+   "after_ms": 800,
+   "op": "part",
+   "part": {
+    "id": "tests",
+    "type": "tool",
+    "name": "run_tests",
+    "input": {
+     "command": "pytest tests/test_retry.py -q"
+    },
+    "output": null,
+    "files": [],
+    "status": "running"
+   }
+  },
+  {
+   "after_ms": 1200,
+   "op": "delta",
+   "part_id": "tests",
+   "field": "output",
+   "text": ".....                                                        [100%]\n"
+  },
+  {
+   "after_ms": 200,
+   "op": "delta",
+   "part_id": "tests",
+   "field": "output",
+   "text": "5 passed in 0.42s"
+  },
+  {
+   "after_ms": 300,
+   "op": "update",
+   "part_id": "tests",
+   "patch": {
+    "status": "done"
+   }
+  },
+  {
+   "after_ms": 700,
+   "op": "part",
+   "part": {
+    "id": "final",
+    "type": "text",
+    "text": ""
+   }
+  },
+  {
+   "after_ms": 300,
+   "op": "delta",
+   "part_id": "final",
+   "field": "text",
+   "text": "All 5 tests pass. Drop it into `utils/retry.py` "
+  },
+  {
+   "after_ms": 300,
+   "op": "delta",
+   "part_id": "final",
+   "field": "text",
+   "text": "and wrap any flaky call:\n\n```python\n"
+  },
+  {
+   "after_ms": 300,
+   "op": "delta",
+   "part_id": "final",
+   "field": "text",
+   "text": "user = await retry(lambda: api.get_user(user_id))\n```\n"
+  }
+ ]
+}
