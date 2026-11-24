@@ -3,7 +3,7 @@ import { useT } from '@/i18n'
 import { formatDuration } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import type { ThinkingPart } from '@/api/types'
-import { Brain } from 'lucide-react'
+import { Lightbulb } from 'lucide-react'
 import { Markdown } from './Markdown'
 import { CollapsibleStep } from './CollapsibleStep'
 import { useElapsed } from './useElapsed'
@@ -48,8 +48,8 @@ export function ThinkingBlock({ part, live }: { part: ThinkingPart; live: boolea
   return (
     <CollapsibleStep
       testId="step-thinking"
-      icon={<Brain className="size-4" />}
-      title={<span className={running ? 'text-muted' : undefined}>{title}</span>}
+      icon={running ? null : <Lightbulb className="size-4" />}
+      title={<span data-testid="thinking-label" data-shimmer={running} className={running ? 'shimmer-text' : undefined}>{title}</span>}
       running={running}
       elapsedMs={elapsed}
       hideDuration={!running}

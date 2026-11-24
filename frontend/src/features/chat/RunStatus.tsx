@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Message, Part } from '@/api/types'
 import { Mascot, mascotStateFor, type MascotState } from '@/components/Mascot'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 import { useT, type TKey } from '@/i18n'
 import { formatDuration, formatTokens } from '@/lib/format'
 import { cn } from '@/lib/cn'
@@ -21,8 +22,13 @@ export function streamedChars(parts: Part[]): number {
 
 /** Pip's pose for the status line: the running part, otherwise a generic "working". */
 export function statusMascotState(message: Message): MascotState {
-  const s = mascotStateFor(message)
-  return s === 'idle' ? 'working' : s
+  return mascotStateFor(message)
+}
+
+/** Pip walks while thinking or while text streams; it stops and "types" while a tool or sub-agent runs. */
+export function statusPose(message: Message): { state: MascotState; walking: boolean } {
+  const state = mascotStateFor(message)
+  return { state, walking: state !== 'working' }
 }
 
 export function tokenText(message: Message): string {
@@ -68,6 +74,9 @@ export function RunStatus({ message, onStop, leaving }: Props) {
   const t = useT()
   const [verb, setVerb] = useState(0)
   const elapsed = useElapsedSince(message.created_at)
+  const reduced = useMediaQuery('(prefers-reduced-motion: reduce)')
+  const pose = statusPose(message)
+  const walking = pose.walking && !reduced
 
   useEffect(() => {
     const id = setInterval(() => setVerb((v) => (v + 1) % VERB_COUNT), VERB_INTERVAL_MS)
@@ -101,7 +110,14 @@ export function RunStatus({ message, onStop, leaving }: Props) {
         {leaving ? t('run.finished') : t('run.working')}
       </span>
       <span aria-hidden className="flex items-center gap-2">
-        <Mascot size={22} state={statusMascotState(message)} />
+        {/* Fixed-size track: Pip patrols with transform-only animation, so nothing around it shifts. */}
+        <span className="pip-track" data-testid="pip-track" data-reduced={reduced}>
+          <span className="pip-walker" data-testid="pip-walker" data-walking={walking}>
+            <span className="pip-hopper">
+              <Mascot size={26} state={pose.state} walking={walking} />
+            </span>
+          </span>
+        </span>
         <span key={verb} data-testid="run-verb" className="verb-fade font-medium text-fg/80">
           {t(`verb.${verb + 1}` as TKey)}…
         </span>

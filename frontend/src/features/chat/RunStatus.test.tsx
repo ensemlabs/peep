@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { renderWithI18n } from '@/test/utils'
-import { RunStatus, shouldStopOnEscape, statusMascotState, streamedChars, tokenText } from './RunStatus'
+import { RunStatus, shouldStopOnEscape, statusMascotState, statusPose, streamedChars, tokenText } from './RunStatus'
 import { EnsembleLogo } from '@/components/EnsembleLogo'
 import { render } from '@testing-library/react'
 import type { Message } from '@/api/types'
@@ -46,10 +46,10 @@ describe('RunStatus', () => {
     const m = msg({ usage: { input_tokens: 1200, output_tokens: 340, reasoning_tokens: null, cache_read_tokens: null, cache_write_tokens: null, total_tokens: 1540, source: 'provider' } })
     expect(tokenText(m)).toBe('↑ 1.2k ↓ 340')
   })
-  it('Pip follows the running part, defaulting to working', () => {
+  it('Pip follows the running part', () => {
     expect(statusMascotState(msg({ parts: [{ id: 'a', type: 'thinking', text: '', status: 'running', started_at: T }] }))).toBe('thinking')
     expect(statusMascotState(msg({ parts: [{ id: 'a', type: 'tool', name: 'n', input: {}, output: null, files: [], status: 'running', started_at: T }] }))).toBe('working')
-    expect(statusMascotState(msg({ parts: [{ id: 'a', type: 'text', text: 'hi' }] }))).toBe('working')
+    expect(statusMascotState(msg({ parts: [{ id: 'a', type: 'text', text: 'hi' }] }))).toBe('idle')
   })
   it('Esc stops the run, but not while a dialog is open', () => {
     const onStop = vi.fn()
@@ -162,5 +162,44 @@ describe('Escape-to-stop guards', () => {
     expect(screen.getByTestId('run-elapsed').closest('[aria-hidden]')).not.toBeNull()
     rerender(<RunStatus message={msg()} leaving />)
     expect(screen.getByTestId('run-status-sr')).toHaveTextContent('Response finished')
+  })
+})
+
+describe('Pip walking track', () => {
+  const tool = (): Message['parts'] => [{ id: 'a', type: 'tool', name: 'n', input: {}, output: null, files: [], status: 'running', started_at: T }]
+  const think = (): Message['parts'] => [{ id: 'a', type: 'thinking', text: '', status: 'running', started_at: T }]
+  const mq = (reduce: boolean) => {
+    window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+      matches: reduce && q.includes('prefers-reduced-motion'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    })) as unknown as typeof window.matchMedia
+  }
+  it('renders a fixed track with the walker and Pip inside it', () => {
+    mq(false)
+    renderWithI18n(<RunStatus message={msg({ parts: think() })} />)
+    const track = screen.getByTestId('pip-track')
+    expect(track.querySelector('[data-testid=pip-walker]')).not.toBeNull()
+    expect(track.querySelector('[data-testid=mascot]')).not.toBeNull()
+    expect(track.querySelector('.pip-float')).not.toBeNull()
+  })
+  it('walks while thinking (with thought dots state) and stops to work while a tool runs', () => {
+    mq(false)
+    expect(statusPose(msg({ parts: think() }))).toEqual({ state: 'thinking', walking: true })
+    expect(statusPose(msg({ parts: tool() }))).toEqual({ state: 'working', walking: false })
+    const { rerender } = renderWithI18n(<RunStatus message={msg({ parts: think() })} />)
+    expect(screen.getByTestId('mascot')).toHaveAttribute('data-state', 'thinking')
+    expect(screen.getByTestId('pip-walker')).toHaveAttribute('data-walking', 'true')
+    expect(screen.getByTestId('mascot')).toHaveClass('mascot--walk')
+    rerender(<RunStatus message={msg({ parts: tool() })} />)
+    expect(screen.getByTestId('mascot')).toHaveAttribute('data-state', 'working')
+    expect(screen.getByTestId('pip-walker')).toHaveAttribute('data-walking', 'false')
+    expect(screen.getByTestId('mascot')).not.toHaveClass('mascot--walk')
+  })
+  it('does not walk under prefers-reduced-motion', () => {
+    mq(true)
+    renderWithI18n(<RunStatus message={msg({ parts: think() })} />)
+    expect(screen.getByTestId('pip-track')).toHaveAttribute('data-reduced', 'true')
+    expect(screen.getByTestId('pip-walker')).toHaveAttribute('data-walking', 'false')
+    expect(screen.getByTestId('mascot')).not.toHaveClass('mascot--walk')
+    mq(false)
   })
 })

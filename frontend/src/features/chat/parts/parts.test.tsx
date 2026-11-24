@@ -56,7 +56,16 @@ describe('ThinkingBlock', () => {
     expect(screen.getByText('secret thoughts')).toBeInTheDocument()
     expect(screen.queryByTestId('mascot')).toBeNull()
     expect(screen.getByTestId('spinner')).toBeInTheDocument()
+    expect(screen.getByTestId('thinking-label')).toHaveAttribute('data-shimmer', 'true')
+    expect(screen.getByTestId('thinking-label')).toHaveClass('shimmer-text')
+    expect(document.querySelector('.lucide-lightbulb')).toBeNull() // no icon while running
     expect(screen.getByTestId('step-duration')).toBeInTheDocument()
+  })
+  it('shows a lightbulb and no shimmer once done', () => {
+    renderWithI18n(<ThinkingBlock part={thinking()} live={false} />)
+    expect(document.querySelector('.lucide-lightbulb')).not.toBeNull()
+    expect(screen.getByTestId('thinking-label')).toHaveAttribute('data-shimmer', 'false')
+    expect(screen.getByTestId('thinking-label')).not.toHaveClass('shimmer-text')
   })
   it('auto-collapses once when done', () => {
     const { rerender } = renderWithI18n(<ThinkingBlock part={thinking({ status: 'running', ended_at: null })} live />)

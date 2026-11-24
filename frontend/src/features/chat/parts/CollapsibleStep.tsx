@@ -46,7 +46,7 @@ export function CollapsibleStep({ testId, icon, title, elapsedMs, running, error
         onClick={() => setUserOpen(!open)}
         className="flex w-full min-w-0 items-center gap-2 rounded-xl px-3 py-1.5 text-left text-[13px] hover:bg-hover"
       >
-        <span className={cn('shrink-0', error ? 'text-danger' : 'text-muted')}>{icon}</span>
+        {icon && <span className={cn('shrink-0', error ? 'text-danger' : 'text-muted')}>{icon}</span>}
         <span className="flex min-w-0 flex-1 items-center gap-2 truncate">{title}</span>
         {showDuration && (
           <span data-testid="step-duration" className="shrink-0 text-xs tabular-nums text-muted">

@@ -2,7 +2,9 @@ import {
   expect, GEMINI_TIMEOUT, lastAssistant, selectModel, sendPrompt, setThinking, test,
 } from './helpers'
 
-test.describe.configure({ retries: 1, timeout: GEMINI_TIMEOUT })
+// Gemini (via the dev proxy) intermittently returns no thinking text even with reasoning_effort=high
+// (measured ~1 in 2 calls on 2026-11-24), so this spec gets one extra retry.
+test.describe.configure({ retries: 2, timeout: GEMINI_TIMEOUT })
 
 const PROMPT = 'Write a Python function is_prime(n) in a code block, then explain it in one sentence.'
 
@@ -51,7 +53,7 @@ test('A5 @gemini: live thinking block, collapse to "Thought for Ns", toggle, pyt
 
   // Finished: collapsed, header "Thought for Ns".
   await expect(step).toHaveAttribute('data-state', 'closed')
-  await expect(step.getByTestId('step-toggle')).toHaveText(/Thought for \d+s|Đã suy nghĩ \d+ giây/)
+  await expect(step.getByTestId('step-toggle')).toHaveText(/Thought for (\d+m )?\d+s|Đã suy nghĩ (\d+ phút )?\d+ giây/)
   await step.getByTestId('step-toggle').click()
   await expect(step).toHaveAttribute('data-state', 'open')
   await expect(step.getByTestId('thinking-text')).not.toBeEmpty()

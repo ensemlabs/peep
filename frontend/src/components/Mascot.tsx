@@ -9,22 +9,25 @@ interface Props {
   size?: number
   /** When false the pose is static (animations are also off under prefers-reduced-motion). */
   animated?: boolean
+  /** Walking gait (feet/arms swing, body bobs); the parent moves it. */
+  walking?: boolean
   className?: string
 }
 
-export function mascotClass(state: MascotState, animated: boolean): string {
-  return cn('mascot', 'mascot-pip', `mascot--${state}`, !animated && 'mascot--still')
+export function mascotClass(state: MascotState, animated: boolean, walking = false): string {
+  return cn('mascot', 'mascot-pip', `mascot--${state}`, !animated && 'mascot--still', walking && animated && 'mascot--walk')
 }
 
 /** "Pip": an original little robot. Pure SVG + CSS keyframes (index.css, scoped under .mascot-pip). */
-export function Mascot({ state = 'idle', size = 28, animated = true, className }: Props) {
+export function Mascot({ state = 'idle', size = 28, animated = true, walking = false, className }: Props) {
   const gid = `pip-${useId().replace(/:/g, '')}`
   return (
     <svg
       data-testid="mascot"
       data-state={state}
       data-animated={animated}
-      className={cn(mascotClass(state, animated), className)}
+      data-walking={walking && animated}
+      className={cn(mascotClass(state, animated, walking), className)}
       width={size}
       height={size}
       viewBox="0 0 64 64"
@@ -37,7 +40,7 @@ export function Mascot({ state = 'idle', size = 28, animated = true, className }
       <g className="pip-float"><g className="pip-body">
       <g className="pip-antenna"><rect x="30.5" y="12" width="3" height="9" rx="1.5" fill="#0c8780"/>
       <g className="pip-bulb"><circle className="pip-glow" cx="32" cy="9" r="7" fill="#ffd166" opacity=".35"/><circle cx="32" cy="9" r="4.3" fill="#ffd166"/><circle cx="30.7" cy="7.7" r="1.3" fill="#fff" opacity=".85"/></g></g>
-      <ellipse cx="23" cy="56.5" rx="6" ry="3" fill="#0c8780"/><ellipse cx="41" cy="56.5" rx="6" ry="3" fill="#0c8780"/>
+      <ellipse className="pip-footL" cx="23" cy="56.5" rx="6" ry="3" fill="#0c8780"/><ellipse className="pip-footR" cx="41" cy="56.5" rx="6" ry="3" fill="#0c8780"/>
       <ellipse className="pip-armL" cx="8.5" cy="42" rx="4.2" ry="6" fill="#0e948d"/><ellipse className="pip-armR" cx="55.5" cy="42" rx="4.2" ry="6" fill="#0e948d"/>
       <path d="M32 17C46 17 54 30 54 41C54 51 45 57 32 57C19 57 10 51 10 41C10 30 18 17 32 17Z" fill={`url(#${gid})`}/>
       <ellipse cx="21.5" cy="26" rx="5" ry="2.8" fill="#fff" opacity=".4" transform="rotate(-35 21.5 26)"/>
