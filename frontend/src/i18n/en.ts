@@ -1,5 +1,6 @@
 export const en = {
-  'app.name': 'Ensemble Chat',
+  'app.name': 'Peep',
+  'app.by': 'by Ensemble Labs',
 
   'common.cancel': 'Cancel',
   'common.confirm': 'Confirm',
@@ -42,7 +43,7 @@ export const en = {
   'validation.passwordRequired': 'Enter your password.',
 
   'login.title': 'Welcome back',
-  'login.subtitle': 'Log in to continue to Ensemble Chat.',
+  'login.subtitle': 'Log in to continue to Peep.',
   'login.submit': 'Log in',
   'login.noAccount': "Don't have an account?",
   'login.registerLink': 'Create one',

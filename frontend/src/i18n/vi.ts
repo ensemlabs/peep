@@ -1,7 +1,8 @@
 import type { TKey } from './en'
 
 export const vi = {
-  'app.name': 'Ensemble Chat',
+  'app.name': 'Peep',
+  'app.by': 'by Ensemble Labs',
 
   'common.cancel': 'Hủy',
   'common.confirm': 'Xác nhận',
@@ -44,7 +45,7 @@ export const vi = {
   'validation.passwordRequired': 'Vui lòng nhập mật khẩu.',
 
   'login.title': 'Chào mừng trở lại',
-  'login.subtitle': 'Đăng nhập để tiếp tục sử dụng Ensemble Chat.',
+  'login.subtitle': 'Đăng nhập để tiếp tục sử dụng Peep.',
   'login.submit': 'Đăng nhập',
   'login.noAccount': 'Chưa có tài khoản?',
   'login.registerLink': 'Tạo tài khoản',

@@ -19,7 +19,7 @@ import { effectiveStatus, groupConversations, indicatorFor, unreadCount, type In
 
 export { groupConversations } from './conversationStatus'
 
-const BASE_TITLE = 'Ensemble Chat'
+const BASE_TITLE = 'Peep'
 
 function useDebounced<T>(value: T, ms: number): T {
   const [v, setV] = useState(value)
@@ -161,7 +161,10 @@ export function Sidebar({ user }: { user: User }) {
         <div className="flex h-12 shrink-0 items-center gap-2 px-3">
           <Link to="/" className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold tracking-tight">
             <EnsembleLogo size={18} />
-            <span className="truncate">{t('app.name')}</span>
+            <span className="flex min-w-0 flex-col leading-none">
+              <span className="truncate text-sm font-semibold tracking-tight">{t('app.name')}</span>
+              <span data-testid="brand-by" className="mt-0.5 truncate text-[10px] font-normal tracking-normal text-muted">{t('app.by')}</span>
+            </span>
           </Link>
           <button
             type="button"

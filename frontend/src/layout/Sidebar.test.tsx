@@ -87,7 +87,7 @@ describe('Sidebar', () => {
     expect(by('Chat stop')).toHaveAttribute('data-status', 'stopped')
     expect(by('Chat read').querySelector('[data-testid=conv-indicator]')).toBeNull()
     expect(screen.getByTestId('group-pinned')).toHaveTextContent('Chat pin')
-    await waitFor(() => expect(document.title).toBe('(2) Ensemble Chat'))
+    await waitFor(() => expect(document.title).toBe('(2) Peep'))
   })
   it('searches with the debounced query', async () => {
     list.mockImplementation(async (q?: string) => ({ next_before: null, items: q ? [conv('hit')] : [conv('a'), conv('b')] }))
@@ -132,5 +132,15 @@ describe('Sidebar rename focus', () => {
     await userEvent.click(await screen.findByTestId('conv-rename'))
     const input = await screen.findByRole('textbox', { name: 'Rename' })
     await waitFor(() => expect(document.activeElement).toBe(input))
+  })
+})
+
+describe('Sidebar brand', () => {
+  it('shows the Peep wordmark with a small "by Ensemble Labs" line in the header', async () => {
+    list.mockResolvedValue({ next_before: null, items: [] })
+    renderWithI18n(<Sidebar user={user} />)
+    expect(screen.getByTestId('sidebar')).toHaveTextContent('Peep')
+    expect(screen.getByTestId('brand-by')).toHaveTextContent('by Ensemble Labs')
+    expect(screen.getByTestId('ensemble-logo')).toBeInTheDocument()
   })
 })

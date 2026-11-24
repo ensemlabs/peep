@@ -1,6 +1,6 @@
 {
-  "name": "Ensemble Chat",
-  "short_name": "Ensemble Chat",
+  "name": "Peep — by Ensemble Labs",
+  "short_name": "Peep",
   "description": "Chat with your AI agent",
   "start_url": "/",
   "scope": "/",

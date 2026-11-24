@@ -15,8 +15,9 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
       <div className="w-full max-w-sm rounded-2xl border border-line bg-bg p-6 shadow-sm sm:p-8">
         <div className="mb-6 text-center">
           <EnsembleLogo size={44} className="mx-auto mb-3" />
-          <p className="text-sm font-semibold tracking-tight text-muted">{t('app.name')}</p>
-          <h1 className="mt-2 text-xl font-semibold tracking-tight">{title}</h1>
+          <p data-testid="brand-name" className="text-2xl font-semibold leading-none tracking-tight">{t('app.name')}</p>
+          <p data-testid="brand-by" className="mt-1 text-xs text-muted">{t('app.by')}</p>
+          <h1 className="mt-5 text-lg font-semibold tracking-tight">{title}</h1>
           <p className="mt-1 text-sm text-muted">{subtitle}</p>
         </div>
         {children}

@@ -80,7 +80,7 @@ describe('thinking level button', () => {
 describe('header centre', () => {
   it('shows the app name for an empty chat and the title once there is a conversation', () => {
     const { rerender } = renderWithI18n(<ChatHeader />)
-    expect(screen.getByTestId('header-app-name')).toHaveTextContent('Ensemble Chat')
+    expect(screen.getByTestId('header-app-name')).toHaveTextContent('Peep')
     rerender(<ChatHeader conversation={{ id: 'c', title: 'My chat', pinned: false }} />)
     expect(screen.queryByTestId('header-app-name')).toBeNull()
     expect(screen.getByTestId('chat-title')).toHaveTextContent('My chat')
