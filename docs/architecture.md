@@ -1,5 +1,7 @@
 # Architecture
 
+How Peep is built: components, request flow, storage and startup.
+
 ## Components
 
 ```
@@ -264,7 +266,7 @@ Both are stored for a future agent backend. Nothing in the chat path reads them.
 7. The pending state is enforced in the API (403). The UI also shows a banner and an overlay that blocks clicks, and
    polls `/api/auth/me` every 30 seconds.
 
-Details and numbers: [api.md](api.md#auth) and the Security section of the [README](../README.md#security-notes).
+Details and numbers: [api.md](api.md#auth) and the Security section of the [README](../README.md#security).
 
 ## Startup tasks
 
@@ -288,6 +290,6 @@ The compose healthcheck of `api` calls `GET /api/health`, which runs `SELECT 1`.
 ## Design limits
 
 - One uvicorn worker (`--workers 1`, `--no-proxy-headers`), because runs, subscribers and the busy set are in process
-  memory. See Limitations in the [README](../README.md#limitations).
+  memory. See Limitations in the [README](../README.md#roadmap-and-limitations).
 - The API container is not published; only nginx is, on `127.0.0.1`.
 - Storage code is plain S3 (boto3, path-style addressing, region `us-east-1`), so the MinIO image can be replaced.

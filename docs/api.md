@@ -1,6 +1,6 @@
 # API
 
-HTTP and SSE contract of the `api` service, as implemented in `backend/app/routers/`. The browser reaches it
+HTTP and SSE contract of Peep's `api` service, as implemented in `backend/app/routers/`. The browser reaches it
 through nginx on the same origin (`/api/...`). There is no `/docs` or `/openapi.json`.
 
 ## Conventions

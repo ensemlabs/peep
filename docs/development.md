@@ -1,6 +1,6 @@
 # Development and testing
 
-Everything runs in Docker. The host needs no Node or Python.
+Notes for working on Peep. Everything runs in Docker. The host needs no Node or Python.
 
 ## Make targets
 
