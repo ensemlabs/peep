@@ -58,6 +58,8 @@ from `.env` are used to sign in as admin.
 - **Database checks** (`e2e/check-db.sh`, run after the suite, a failure fails `make e2e`): every stored password hash
   starts with `$argon2id$` and at least one user exists, and no plugin header value used by the specs is stored in
   plaintext.
+- The `@gemini` specs depend on the free development proxy and can be blocked when it hangs. To check everything else,
+  run `make e2e ARGS="--grep-invert @gemini"`.
 - Playwright's Chromium has no H.264/AAC: playback and seeking tests use WebM and MP3. The mp4 demo file is only
   checked for Range requests and downloads.
 - Reports and traces go to `e2e/playwright-report/` and `e2e/test-results/`; ad-hoc screenshots to `e2e/artifacts/`

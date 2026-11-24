@@ -6,7 +6,7 @@
 
 <p align="center">Built by Ensemble Labs.</p>
 
-<p align="center"><img src="docs/images/chat-agent-demo.png" alt="Desktop chat with a demo agent run: thinking block, markdown, tool cards, conversation sidebar" width="820"></p>
+<p align="center"><img src="docs/images/chat-agent-demo.png" alt="Desktop chat with a demo agent run: Thought row, markdown, inline tool rows" width="820"></p>
 
 ## Overview
 
@@ -19,26 +19,24 @@ built and tested before a real agent is plugged in (see [docs/api.md](docs/api.m
 
 ## Features
 
-- **Live thinking panel:** the model's reasoning streams into an open panel inside the chat, with Pip and a
-  timer. When it ends it collapses to "Thought for Ns".
+- **ChatGPT-style conversation:** answers are plain text on the page, not boxed cards. Reasoning is a quiet
+  "Thinking..." row that streams its last few lines with a fade and, when done, collapses to "Thought for Ns"
+  (click to expand). Tool calls and sub-agents are inline rows ("Ran `read_file`", with input and output when
+  expanded); sub-agents nest. Images, video and audio from tools are shown directly in the flow.
 - **Thinking levels per model:** each model in `config/models.yaml` declares its own levels (for example Off, Low,
   High, Max). The Thinking selector in the composer shows exactly those. A model with one level shows an
   "always on" label, and a model without levels shows no selector.
-- **Run status line:** while a reply is generated, a status line under it shows Pip, a changing verb, an elapsed
-  timer and the token count. Press the Stop button, or Esc while the focus is in the message box, to cancel (Esc in
-  other text fields, dialogs and menus does not stop it).
-- **Context ring:** a ring next to the send button shows how much of the model's context window the conversation
-  uses (it changes colour above 70% and 90%). Hover, click or tap for a breakdown (system, your messages, replies,
-  attachments, tool results, skills, free), the last response (input, output, reasoning, cache read, cache write)
-  and conversation totals. Numbers are marked "estimated" (tiktoken) or "from provider" when the provider reports
-  real usage.
-- **Tool and sub-agent cards:** name, input, output, status and run time. Sub-agents nest, and their steps can
-  contain tools and text.
+- **Stop:** the send button turns into a Stop button while a reply runs. Esc stops it too while the focus is in the
+  message box (Esc in other text fields, dialogs and menus does not).
+- **Context ring:** a small pie gauge in the composer shows how much of the model's context window the conversation
+  uses. Hover, click or tap for a breakdown (system, your messages, replies, attachments, tool results, skills,
+  free), the last response (input, output, reasoning, cache read, cache write) and conversation totals. Numbers are
+  marked "estimated" (tiktoken) or "from provider" when the provider reports real usage.
 - **Markdown, code and math:** GitHub-flavoured markdown (raw HTML is not rendered), syntax highlighting, language
   label, Copy and wrap buttons, and LaTeX math rendered with KaTeX.
 - **Media:** image gallery with a zoom lightbox (next/previous, thumbnails), video with seeking, audio player,
   and a download button on everything.
-- **Uploads:** attach images, video, audio and any file (button, drag and drop, paste). Files are stored in MinIO,
+- **Uploads:** attach images, video, audio and any file (the + button, drag and drop, paste). Files are stored in MinIO,
   images are sent to the model, text files open in a code preview.
 - **Conversation list:** each conversation shows its state (running spinner, unread dot when a reply finished
   while you were elsewhere, red dot on error), a one-line preview, search over titles and message text, and pinning.
@@ -49,26 +47,26 @@ built and tested before a real agent is plugged in (see [docs/api.md](docs/api.m
 - **Accounts:** email and password sign-up. New accounts are `pending` until an admin approves them on the admin
   page (search, approve, disable, change role, reset password, delete).
 - **Languages and themes:** Vietnamese and English with a switch; light, dark or system theme.
-- **Responsive:** phone to desktop. The sidebar becomes a drawer below 768 px.
-- **Branding:** the Ensemble logo (theme-aware SVG) in the sidebar, the login page and the favicon. Pip, a teal robot
-  with a lightbulb antenna, is the assistant's avatar and animates while the assistant works (idle, thinking,
-  working, error).
-- **Reconnect and stop:** a reply keeps running if you close the tab. Reload the page and the stream resumes.
-  A Stop button cancels it.
+- **Mobile and PWA:** built for phones as well as desktops: the sidebar is a drawer below 768 px, safe areas
+  (notches), dynamic viewport height and on-screen keyboards are handled, and inputs are 16 px so iOS does not zoom.
+  A web app manifest with icons lets you install it to the home screen (standalone display). There is no service
+  worker, so it is not available offline.
+- **Mascot and branding:** the Ensemble logo (theme-aware SVG) in the sidebar, the login page and the favicon.
+  Peep, a yellow chick, greets you when a new chat opens and then idles. It also shows as a small "waiting"
+  indicator before the first token of a reply arrives, and in an error pose next to a failed reply.
+- **Dev model picker:** when `dev.model_switcher` is on, a model picker appears in the composer on desktop and in
+  the drawer on phones (see [Models configuration](#models-configuration)).
+- **Reconnect:** a reply keeps running if you close the tab. Reload the page and the stream resumes.
 
 <p align="center">
-  <img src="docs/images/chat-dark.png" alt="Dark theme: Pip and the run-status line while the assistant is thinking" width="520">
-  <img src="docs/images/mobile-chat.png" alt="Phone layout with the run-status line" width="190">
+  <img src="docs/images/chat-dark.png" alt="Dark theme: inline tool rows with an image gallery shown directly in the flow" width="520">
+  <img src="docs/images/chat-code.png" alt="Light theme: answer with a highlighted code block, conversation list and the context gauge" width="520">
 </p>
 
 <p align="center">
-  <img src="docs/images/context-ring.png" alt="Context ring popover: breakdown, last response, conversation totals" width="400">
-  <img src="docs/images/gallery-lightbox.png" alt="Image gallery lightbox with zoom and thumbnails" width="400">
-</p>
-
-<p align="center">
-  <img src="docs/images/integrations.png" alt="Settings, Plugins and Skills tab" width="400">
-  <img src="docs/images/math.png" alt="Math rendered with KaTeX in an answer" width="400">
+  <img src="docs/images/peep-empty.png" alt="New chat with Peep greeting the user and suggestion chips" width="400">
+  <img src="docs/images/peep-states.png" alt="Peep poses" width="300">
+  <img src="docs/images/mobile-chat.png" alt="Phone layout, dark theme" width="170">
 </p>
 
 ## Architecture
